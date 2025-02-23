@@ -1,9 +1,9 @@
 # Artist Finder API - Integración con API de Spotify
 
-## 📖 Descripción
+## Descripción
 Esta API permite gestionar información de usuarios, almacenar sus artistas favoritos y consultar información de artistas y canciones a través de la API de Spotify.
 
-## 🧩 Características
+## Características
 - CRUD completo de usuarios (crear, leer, actualizar, eliminar)
 - Guardado de artistas favoritos para cada usuario
 - Consulta de información de artistas y canciones en Spotify
@@ -11,7 +11,7 @@ Esta API permite gestionar información de usuarios, almacenar sus artistas favo
 
 ---
 
-## 💻 Requisitos
+## Requisitos
 - Python 3.10 o superior
 - Flask
 - Requests
@@ -20,7 +20,7 @@ Esta API permite gestionar información de usuarios, almacenar sus artistas favo
 
 ---
 
-## ⚙️ Configuración
+## Configuración
 1. Clona el repositorio:
 2. Crea un entorno virtual :
 3. Instala las dependencias:
@@ -30,7 +30,7 @@ Esta API permite gestionar información de usuarios, almacenar sus artistas favo
 
 <!-- ENDPOINTS DE LA API -->
 
-## 📖 Usuarios 
+## Usuarios 
 POST
 /users -> crear un nuevo usuario 
 
@@ -46,14 +46,14 @@ PUT
 DELETE 
 /users/<id> -> eliminar un usuario
 
-## 📖 Artistas favoritos
+## Artistas favoritos
 POST
 /users/<id>/artists -> agregar un artista favorito
 
 GET 
 /users/<id>/artists -> enlistar los artistas favoritos de un usuario
 
-## 📖 Integración con Spotify
+## Integración con Spotify
 GET 
 /spotify/artist/<artist_name> -> Obtener informacion de un artista
 
