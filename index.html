@@ -267,6 +267,32 @@ var CATALOGO = [
   { d:1, n:'Nicolas Jaar',   g:['electro'],         t:[['Mi Mujer','5:05'],['Space Is Only Noise If You Can See','3:26'],['Time for Us','8:14'],['Colomb','5:44']] },
 
   // Solo por buscador
+  { n:'SZA',            g:['rnb','pop'],       t:[['Kill Bill','2:33'],['Snooze','3:22'],['Good Days','4:39'],['The Weekend','4:32']] },
+  { n:'Tems',           g:['rnb','afrobeats'], t:[['Free Mind','3:37'],['Higher','3:32'],['Me & U','2:56']] },
+  { n:'Burna Boy',      g:['afrobeats'],       t:[['Last Last','2:52'],['Ye','3:33'],['City Boys','2:56']] },
+  { n:'Frank Ocean',    g:['rnb','indie'],     t:[['Pink + White','3:04'],['Ivy','4:09'],['Nights','5:07'],['Thinkin Bout You','3:20']] },
+  { n:'Kendrick Lamar', g:['hiphop'],          t:[['HUMBLE.','2:57'],['Alright','3:39'],['money trees','6:26'],['N95','3:15']] },
+  { n:'Tyler, The Creator', g:['hiphop'],      t:[['EARFQUAKE','3:10'],['See You Again','3:00'],['NEW MAGIC WAND','3:15']] },
+  { n:'Beyonce',        g:['pop','rnb'],       t:[['CUFF IT','3:45'],['Crazy in Love','3:56'],['Halo','4:21']] },
+  { n:'Amy Winehouse',  g:['jazz','rnb'],      t:[['Back to Black','4:01'],['Valerie','3:38'],['Rehab','3:34']] },
+  { n:'Nina Simone',    g:['jazz'],            t:[['Feeling Good','2:57'],['Sinnerman','10:20'],['I Put a Spell on You','2:36']] },
+  { n:'Queen',          g:['rock'],            t:[['Bohemian Rhapsody','5:55'],['Don\'t Stop Me Now','3:29'],['Under Pressure','4:04']] },
+  { n:'Pink Floyd',     g:['rock'],            t:[['Wish You Were Here','5:34'],['Comfortably Numb','6:22'],['Money','6:23']] },
+  { n:'Talking Heads',  g:['rock','indie'],    t:[['Once in a Lifetime','4:19'],['Psycho Killer','4:19'],['This Must Be the Place','4:56']] },
+  { n:'Fleetwood Mac',  g:['rock','soft'],     t:[['Dreams','4:17'],['Go Your Own Way','3:38'],['Everywhere','3:48']] },
+  { n:'The Cure',       g:['rock','synth'],    t:[['Just Like Heaven','3:32'],['Boys Don\'t Cry','2:35'],['Lovesong','3:29']] },
+  { n:'Michael Jackson',g:['pop'],             t:[['Billie Jean','4:54'],['Thriller','5:57'],['Beat It','4:18']] },
+  { n:'Peggy Gou',      g:['house','electro'], t:[['(It Goes Like) Nanana','3:47'],['Starry Night','5:39'],['It Makes You Forget','4:34']] },
+  { n:'Bonobo',         g:['electro'],         t:[['Kerala','4:03'],['Cirrus','5:11'],['Black Sands','4:32']] },
+  { n:'Jamie xx',       g:['electro','house'], t:[['Gosh','5:20'],['Loud Places','4:40'],['Sleep Sound','4:37']] },
+  { n:'ODESZA',         g:['electro'],         t:[['Say My Name','4:12'],['A Moment Apart','4:47'],['Line of Sight','4:07']] },
+  { n:'Khruangbin',     g:['indie'],           t:[['Maria Tambien','3:52'],['August 10','3:41'],['Time (You and I)','5:29']] },
+  { n:'Men I Trust',    g:['indie'],           t:[['Show Me How','3:33'],['Tailwhip','3:37'],['Numb','4:01']] },
+  { n:'Cigarettes After Sex', g:['indie'],     t:[['Apocalypse','4:49'],['Nothing\'s Gonna Hurt You Baby','4:47'],['Cry','3:53']] },
+  { n:'Cafe Tacvba',    g:['latin','rock'],    t:[['Eres','5:00'],['Ingrata','3:23'],['La Ingrata','3:23']] },
+  { n:'Zoe',            g:['latin','rock'],    t:[['Sone','4:19'],['Labios Rotos','4:04'],['Luna','4:37']] },
+  { n:'Charly Garcia',  g:['latin','rock'],    t:[['Demoliendo Hoteles','3:47'],['Rezo por Vos','4:37'],['No Voy en Tren','4:20']] },
+  { n:'Rauw Alejandro', g:['reggaeton','latin'], t:[['Todo de Ti','3:19'],['Punto 40','3:38'],['Desesperados','3:14']] },
   { n:'Coldplay',      g:['rock','pop'],        t:[['Yellow','4:29'],['Fix You','4:55'],['Viva La Vida','4:02'],['The Scientist','5:09']] },
   { n:'Radiohead',     g:['rock','indie'],      t:[['Creep','3:58'],['Karma Police','4:24'],['No Surprises','3:48'],['Paranoid Android','6:23']] },
   { n:'Tame Impala',   g:['indie','synth'],     t:[['The Less I Know The Better','3:38'],['Let It Happen','7:46'],['Borderline','3:57']] },
@@ -308,6 +334,15 @@ function cargar(){
   return [{ id:1, name:'Andrea', email:'andrea@ejemplo.com', artists:[], playlist:null }];
 }
 function guardar(){ localStorage.setItem(CLAVE, JSON.stringify(estado.personas)); }
+
+/* Quita tildes y signos para que "rosalía" encuentre a "Rosalia" y
+   "blondish" encuentre a "Blond:ish". Buscar es comparar lo que la
+   persona escribe con lo que hay, no exigir que escriba igual. */
+function normalizar(t){
+  return String(t).toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')  // tildes
+    .replace(/[^a-z0-9]/g, '');                          // :, !, espacios
+}
 
 function esc(s){ return String(s).replace(/[<>&"]/g, function(c){
   return {'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]; }); }
@@ -377,11 +412,12 @@ function pintarArtistas(){
   // Sin busqueda se ven los destacados. Con busqueda, todo el catalogo.
   // Los ya elegidos se muestran siempre, para poder quitarlos sin borrar
   // lo que se escribio en el buscador.
+  var qn = normalizar(q);
   var visibles = CATALOGO.filter(function(a){
     if (estado.elegidos.indexOf(a.n) !== -1) return true;
-    if (!q) return !!a.d;
-    return a.n.toLowerCase().indexOf(q) !== -1 ||
-           a.g.some(function(g){ return g.indexOf(q) !== -1; });
+    if (!qn) return !!a.d;
+    return normalizar(a.n).indexOf(qn) !== -1 ||
+           a.g.some(function(g){ return normalizar(g).indexOf(qn) !== -1; });
   });
 
   $('#artistas').innerHTML = visibles.map(function(a){
