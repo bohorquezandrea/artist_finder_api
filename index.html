@@ -98,6 +98,27 @@ code{font-family:var(--mono);font-size:.9em;background:var(--surface-2);padding:
 footer{margin-top:56px;padding-top:24px;border-top:1px solid var(--line);
   display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--ink-muted)}
 a{color:var(--accent)}
+
+.guia{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:28px 26px;margin-bottom:16px}
+.guia-t{font-size:13px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:var(--warm);margin-bottom:20px}
+.pasos{list-style:none;display:grid;gap:16px;margin-bottom:20px}
+@media(min-width:820px){.pasos{grid-template-columns:repeat(3,1fr);gap:22px}}
+.pasos li{display:flex;gap:14px;align-items:flex-start}
+.pasos span{flex:none;width:28px;height:28px;border-radius:50%;background:var(--accent);color:#10231C;
+  display:grid;place-items:center;font-size:13px;font-weight:700}
+.pasos b{display:block;font-size:15px;font-weight:600;margin-bottom:3px}
+.pasos div{font-size:13.5px;color:var(--ink-soft);line-height:1.55}
+.pasos em{font-style:normal;color:var(--accent);font-weight:500}
+.guia-p{font-size:13.5px;color:var(--ink-muted);padding-top:18px;border-top:1px solid var(--line)}
+
+.tecnico{margin-bottom:22px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:0 20px}
+.tecnico summary{cursor:pointer;padding:15px 0;font-size:12px;font-weight:600;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--ink-muted);list-style:none}
+.tecnico summary::-webkit-details-marker{display:none}
+.tecnico summary::before{content:'+ ';color:var(--accent)}
+.tecnico[open] summary::before{content:'\2212 '}
+.tecnico[open] summary{border-bottom:1px solid var(--line);margin-bottom:14px}
+.tecnico p{font-size:13.5px;color:var(--ink-soft);padding-bottom:16px}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -108,9 +129,10 @@ a{color:var(--accent)}
   <p class="eyebrow">Python · Flask · Spotify Web API</p>
   <h1>Artist <em>Finder</em></h1>
   <p class="lede">
-    Cliente de la API REST que gestiona usuarios y sus artistas favoritos.
-    Los endpoints del backend en Flask, funcionando aqui contra el
-    almacenamiento del navegador para que se puedan probar sin instalar nada.
+    Una libreta de artistas favoritos. Registras a alguien, le vas guardando
+    los artistas que le gustan, y puedes consultar informacion real de
+    cualquier artista: cuantos seguidores tiene, que generos toca y que tan
+    popular es ahora mismo.
   </p>
   <div class="chips">
     <span class="chip">Python</span><span class="chip">Flask</span>
@@ -119,24 +141,49 @@ a{color:var(--accent)}
   </div>
 </header>
 
-<div class="note">
-  <b>Como funciona esta pagina.</b> GitHub Pages solo sirve archivos
-  estaticos, asi que no puede ejecutar Python. Esta version replica la
-  logica de la API contra <code>localStorage</code>: crear, listar,
-  editar y borrar usuarios funciona de verdad, y cada accion queda
-  registrada abajo con el metodo y la ruta que usaria el backend.
-  Consultar Spotify si necesita el servidor, porque el
-  <code>client_secret</code> nunca puede viajar al navegador.
+<div class="guia">
+  <h2 class="guia-t">Pruebala en 3 pasos</h2>
+  <ol class="pasos">
+    <li><span>1</span><div><b>Crea una persona</b>
+      Escribe un nombre y un correo, y dale a crear. Aparece en la lista de abajo.</div></li>
+    <li><span>2</span><div><b>Guardale artistas</b>
+      En su tarjeta, toca <em>+ Artista</em> y escribe el que quieras. Puedes anadir
+      los que quieras y quitarlos con la equis.</div></li>
+    <li><span>3</span><div><b>Busca un artista</b>
+      Escribe <em>coldplay</em>, <em>karol g</em>, <em>bad bunny</em> o
+      <em>taylor swift</em> y mira sus seguidores, generos y popularidad.</div></li>
+  </ol>
+  <p class="guia-p">
+    Todo lo que hagas se guarda solo en tu navegador, asi que puedes trastear
+    tranquilo. Si recargas sigue ahi; nadie mas lo ve.
+  </p>
 </div>
+
+<details class="tecnico">
+  <summary>Para quien venga a ver el codigo</summary>
+  <p>
+    El proyecto original es una API REST en Flask con nueve endpoints y
+    autenticacion por client credentials contra la Spotify Web API. GitHub
+    Pages solo sirve archivos estaticos y no ejecuta Python, asi que esta
+    pagina replica la logica del backend contra <code>localStorage</code>:
+    mismas validaciones, mismos codigos de estado y misma forma de
+    respuesta. El registro de la derecha muestra el metodo y la ruta que
+    se enviarian al servidor real.
+  </p>
+  <p>
+    La busqueda en Spotify devuelve ejemplos porque ese endpoint si necesita
+    el servidor: el <code>client_secret</code> no puede viajar al navegador.
+  </p>
+</details>
 
 <div class="cols">
 
   <div>
     <div class="panel">
-      <h2>Crear usuario</h2>
+      <h2>Anadir persona</h2>
       <p class="hint">POST /users</p>
       <div class="row">
-        <input id="n-name" placeholder="Nombre" autocomplete="off">
+        <input id="n-name" placeholder="Nombre (ej: Andrea)" autocomplete="off">
         <input id="n-mail" placeholder="correo@ejemplo.com" autocomplete="off">
       </div>
       <button class="b-main" id="crear">Crear usuario</button>
@@ -151,7 +198,7 @@ a{color:var(--accent)}
 
   <div>
     <div class="panel">
-      <h2>Buscar en Spotify</h2>
+      <h2>Buscar un artista</h2>
       <p class="hint">GET /spotify/artist/&lt;nombre&gt;</p>
       <div class="row">
         <input id="q" placeholder="coldplay" autocomplete="off">
@@ -191,7 +238,7 @@ var log = $('#log');
 function cargar(){
   var raw = localStorage.getItem(CLAVE);
   if (raw) { try { return JSON.parse(raw); } catch (e) {} }
-  return [{ id: 1, name: 'Juan Carlos', email: 'jc@example.com', artists: ['Coldplay'] }];
+  return [{ id: 1, name: 'Andrea', email: 'andrea@ejemplo.com', artists: ['Coldplay'] }];
 }
 function guardar(u){ localStorage.setItem(CLAVE, JSON.stringify(u)); }
 
