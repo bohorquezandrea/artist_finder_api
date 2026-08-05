@@ -80,6 +80,9 @@ input::placeholder{color:var(--ink-muted)}
 .punto{width:8px;height:8px;border-radius:50%;background:var(--line);transition:background .3s var(--ease)}
 .punto.on{background:var(--warm)}
 
+.buscador{margin-bottom:12px}
+.sin-res{display:none;font-size:13.5px;color:var(--ink-muted);padding:14px 2px}
+.sin-res.on{display:block}
 .artistas{display:grid;gap:9px;grid-template-columns:repeat(2,1fr)}
 @media(min-width:560px){.artistas{grid-template-columns:repeat(3,1fr)}}
 .art{position:relative;padding:14px 12px;border-radius:14px;background:var(--bg);
@@ -104,6 +107,10 @@ button{font:inherit;color:inherit;font-size:13px;font-weight:700;letter-spacing:
 button:hover:not(:disabled){transform:translateY(-2px)}
 button:disabled{opacity:.35;cursor:not-allowed}
 .b-main{background:var(--accent);color:#10231C;flex:1 1 auto}
+.enlace-btn{display:inline-block;text-align:center;text-decoration:none;
+  font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  padding:15px 26px;border-radius:999px;transition:transform .25s var(--ease)}
+.enlace-btn:hover{transform:translateY(-2px)}
 .b-ghost{background:transparent;border-color:var(--line);color:var(--ink)}
 .b-ghost:hover{border-color:var(--accent);color:var(--accent)}
 
@@ -190,7 +197,9 @@ a{color:var(--accent)}
     <span id="cuenta">0 de 3</span>
     <span class="puntos"><i class="punto"></i><i class="punto"></i><i class="punto"></i></span>
   </div>
+  <input id="buscar" class="buscador" placeholder="¿No está? Búscalo aquí" autocomplete="off">
   <div class="artistas" id="artistas"></div>
+  <p class="sin-res" id="sin-res">No tengo a ese artista en el catálogo todavía.</p>
   <div class="acciones">
     <button class="b-main" id="armar" disabled>Armar mi playlist</button>
     <button class="b-ghost" id="limpiar">Empezar de nuevo</button>
@@ -235,23 +244,46 @@ a{color:var(--accent)}
    cada artista elegido y cuatro de artistas que comparten genero.
    ============================================================= */
 var CATALOGO = [
-  { n:'Coldplay',        g:['rock','pop'],      t:[['Yellow','4:29'],['Fix You','4:55'],['Viva La Vida','4:02'],['The Scientist','5:09'],['Clocks','5:07']] },
-  { n:'Arctic Monkeys',  g:['rock','indie'],    t:[['Do I Wanna Know?','4:32'],['505','4:13'],['R U Mine?','3:21'],['Why\'d You Only Call Me When You\'re High?','2:41']] },
-  { n:'Radiohead',       g:['rock','indie'],    t:[['Creep','3:58'],['Karma Police','4:24'],['No Surprises','3:48'],['Paranoid Android','6:23']] },
-  { n:'Tame Impala',     g:['indie','pop'],     t:[['The Less I Know The Better','3:38'],['Let It Happen','7:46'],['Borderline','3:57']] },
-  { n:'Bad Bunny',       g:['reggaeton','latin'], t:[['Titi Me Pregunto','4:03'],['Me Porto Bonito','2:58'],['Callaita','4:10'],['Yonaguni','3:26'],['Dakiti','3:25']] },
-  { n:'KAROL G',         g:['reggaeton','latin'], t:[['Provenza','3:30'],['TQG','3:19'],['Bichota','3:03'],['Mananas Sera Bonito','3:05']] },
-  { n:'Feid',            g:['reggaeton','latin'], t:[['Normal','3:14'],['Classy 101','3:14'],['Ferxxo 100','3:24']] },
-  { n:'Shakira',         g:['latin','pop'],     t:[['Hips Don\'t Lie','3:38'],['Whenever, Wherever','3:16'],['La Tortura','3:32'],['Ojos Asi','3:59']] },
-  { n:'Juanes',          g:['latin','rock'],    t:[['A Dios Le Pido','3:24'],['La Camisa Negra','3:36'],['Es Por Ti','4:05']] },
-  { n:'Carlos Vives',    g:['latin'],           t:[['La Gota Fria','4:32'],['Fruta Fresca','4:03'],['Volvi a Nacer','3:56']] },
-  { n:'Bomba Estereo',   g:['latin','indie'],   t:[['Soy Yo','3:05'],['To My Love','3:41'],['Fuego','3:33']] },
-  { n:'Rosalia',         g:['latin','pop'],     t:[['Malamente','2:30'],['Despecha','2:38'],['Con Altura','2:41'],['Bizcochito','2:03']] },
-  { n:'Taylor Swift',    g:['pop'],             t:[['Anti-Hero','3:20'],['Blank Space','3:51'],['Cruel Summer','2:58'],['Love Story','3:55']] },
-  { n:'Dua Lipa',        g:['pop'],             t:[['Levitating','3:23'],['Don\'t Start Now','3:03'],['New Rules','3:29'],['Physical','3:13']] },
-  { n:'The Weeknd',      g:['pop','rnb'],       t:[['Blinding Lights','3:20'],['Save Your Tears','3:35'],['Starboy','3:50'],['Die For You','4:20']] },
-  { n:'Billie Eilish',   g:['pop','indie'],     t:[['bad guy','3:14'],['Happier Than Ever','4:58'],['lovely','3:20'],['everything i wanted','4:05']] }
+  // Los 16 destacados aparecen como botones. El resto solo por buscador.
+  { d:1, n:'Led Zeppelin',   g:['rock'],            t:[['Stairway to Heaven','8:02'],['Whole Lotta Love','5:34'],['Kashmir','8:37'],['Immigrant Song','2:26']] },
+  { d:1, n:'The Strokes',    g:['rock','indie'],    t:[['Last Nite','3:17'],['Reptilia','3:39'],['Someday','3:05'],['You Only Live Once','3:08']] },
+  { d:1, n:'Arctic Monkeys', g:['rock','indie'],    t:[['Do I Wanna Know?','4:32'],['505','4:13'],['R U Mine?','3:21'],['Arabella','3:27']] },
+  { d:1, n:'Depeche Mode',   g:['synth','rock'],    t:[['Enjoy the Silence','6:12'],['Personal Jesus','4:56'],['Just Can\'t Get Enough','3:43'],['Never Let Me Down Again','4:47']] },
+  { d:1, n:'New Order',      g:['synth','indie'],   t:[['Blue Monday','7:29'],['Bizarre Love Triangle','4:20'],['True Faith','5:53'],['Temptation','8:43']] },
+  { d:1, n:'The Beatles',    g:['rock'],            t:[['Here Comes the Sun','3:05'],['Let It Be','4:03'],['Come Together','4:19'],['Hey Jude','7:11']] },
+  { d:1, n:'Toto',           g:['rock','soft'],     t:[['Africa','4:55'],['Hold the Line','3:56'],['Rosanna','5:32'],['I Won\'t Hold You Back','4:56']] },
+  { d:1, n:'Soda Estereo',   g:['rock','latin'],    t:[['De Musica Ligera','3:32'],['Persiana Americana','4:31'],['Nada Personal','4:08'],['Cuando Pase el Temblor','4:03']] },
+  { d:1, n:'Miranda!',       g:['latin','synth'],   t:[['Don','3:47'],['Perfecta','3:39'],['Yo Te Dire','3:52'],['Prisionero','3:31']] },
+  { d:1, n:'Bad Bunny',      g:['reggaeton','latin'], t:[['Titi Me Pregunto','4:03'],['Me Porto Bonito','2:58'],['Callaita','4:10'],['Yonaguni','3:26']] },
+  { d:1, n:'Frank Sinatra',  g:['jazz','soft'],     t:[['Fly Me to the Moon','2:27'],['My Way','4:35'],['That\'s Life','3:07'],['Come Fly with Me','3:19']] },
+  { d:1, n:'Mac Miller',     g:['hiphop'],          t:[['Self Care','5:45'],['Good News','5:42'],['Dang!','4:20'],['Come Back to Earth','2:41']] },
+  { d:1, n:'Black Coffee',   g:['house','electro'], t:[['Drive','3:33'],['SBCNCSLY','3:40'],['Wish You Were Here','6:39'],['You Need Me','4:04']] },
+  { d:1, n:'Blond:ish',      g:['house','electro'], t:[['Never Walk Alone','3:20'],['Wanna Feel U','6:12'],['Waves','5:48'],['Endless Summer','6:30']] },
+  { d:1, n:'Fred Again',     g:['electro','house'], t:[['Delilah (pull me out of this)','3:36'],['Rumble','3:12'],['Marea (we\'ve lost dancing)','4:03'],['Turn On The Lights again..','3:57']] },
+  { d:1, n:'Nicolas Jaar',   g:['electro'],         t:[['Mi Mujer','5:05'],['Space Is Only Noise If You Can See','3:26'],['Time for Us','8:14'],['Colomb','5:44']] },
+
+  // Solo por buscador
+  { n:'Coldplay',      g:['rock','pop'],        t:[['Yellow','4:29'],['Fix You','4:55'],['Viva La Vida','4:02'],['The Scientist','5:09']] },
+  { n:'Radiohead',     g:['rock','indie'],      t:[['Creep','3:58'],['Karma Police','4:24'],['No Surprises','3:48'],['Paranoid Android','6:23']] },
+  { n:'Tame Impala',   g:['indie','synth'],     t:[['The Less I Know The Better','3:38'],['Let It Happen','7:46'],['Borderline','3:57']] },
+  { n:'Gorillaz',      g:['indie','hiphop'],    t:[['Feel Good Inc.','3:41'],['Clint Eastwood','5:41'],['On Melancholy Hill','3:53']] },
+  { n:'Daft Punk',     g:['electro','house'],   t:[['Get Lucky','6:07'],['One More Time','5:20'],['Instant Crush','5:37'],['Around the World','7:09']] },
+  { n:'KAROL G',       g:['reggaeton','latin'], t:[['Provenza','3:30'],['TQG','3:19'],['Bichota','3:03']] },
+  { n:'Feid',          g:['reggaeton','latin'], t:[['Normal','3:14'],['Classy 101','3:14'],['Ferxxo 100','3:24']] },
+  { n:'Shakira',       g:['latin','pop'],       t:[['Hips Don\'t Lie','3:38'],['Whenever, Wherever','3:16'],['La Tortura','3:32']] },
+  { n:'Juanes',        g:['latin','rock'],      t:[['A Dios Le Pido','3:24'],['La Camisa Negra','3:36'],['Es Por Ti','4:05']] },
+  { n:'Carlos Vives',  g:['latin'],             t:[['La Gota Fria','4:32'],['Fruta Fresca','4:03'],['Volvi a Nacer','3:56']] },
+  { n:'Bomba Estereo', g:['latin','electro'],   t:[['Soy Yo','3:05'],['To My Love','3:41'],['Fuego','3:33']] },
+  { n:'Rosalia',       g:['latin','pop'],       t:[['Malamente','2:30'],['Despecha','2:38'],['Con Altura','2:41']] },
+  { n:'Taylor Swift',  g:['pop'],               t:[['Anti-Hero','3:20'],['Blank Space','3:51'],['Cruel Summer','2:58']] },
+  { n:'Dua Lipa',      g:['pop','house'],       t:[['Levitating','3:23'],['Don\'t Start Now','3:03'],['Physical','3:13']] },
+  { n:'The Weeknd',    g:['pop','synth'],       t:[['Blinding Lights','3:20'],['Save Your Tears','3:35'],['Starboy','3:50']] },
+  { n:'Billie Eilish', g:['pop','indie'],       t:[['bad guy','3:14'],['Happier Than Ever','4:58'],['lovely','3:20']] }
 ];
+
+// Lo que se escriba en el buscador filtra TODO el catalogo; sin texto se
+// muestran solo los destacados.
+var filtro = '';
 
 var CLAVE = 'artist_finder_v2';
 function $(s){ return document.querySelector(s); }
@@ -328,17 +360,35 @@ function persona(){
 /* ---------- Paso 2 ---------- */
 function pintarArtistas(){
   var lleno = estado.elegidos.length >= 3;
-  $('#artistas').innerHTML = CATALOGO.map(function(a){
+  var q = filtro.trim().toLowerCase();
+
+  // Sin busqueda se ven los destacados. Con busqueda, todo el catalogo.
+  // Los ya elegidos se muestran siempre, para poder quitarlos sin borrar
+  // lo que se escribio en el buscador.
+  var visibles = CATALOGO.filter(function(a){
+    if (estado.elegidos.indexOf(a.n) !== -1) return true;
+    if (!q) return !!a.d;
+    return a.n.toLowerCase().indexOf(q) !== -1 ||
+           a.g.some(function(g){ return g.indexOf(q) !== -1; });
+  });
+
+  $('#artistas').innerHTML = visibles.map(function(a){
     var sel = estado.elegidos.indexOf(a.n) !== -1;
     return '<button class="art' + (sel ? ' sel' : '') + (lleno && !sel ? ' lleno' : '') + '" data-a="' + esc(a.n) + '">' +
            '<span class="art-n">' + esc(a.n) + '</span>' +
            '<span class="art-g">' + a.g[0] + '</span></button>';
   }).join('');
 
+  $('#sin-res').classList.toggle('on', q.length > 1 && visibles.length === estado.elegidos.length);
   $('#cuenta').textContent = estado.elegidos.length + ' de 3';
   $$('.punto').forEach(function(d,i){ d.classList.toggle('on', i < estado.elegidos.length); });
   $('#armar').disabled = estado.elegidos.length !== 3;
 }
+
+$('#buscar').addEventListener('input', function(e){
+  filtro = e.target.value;
+  pintarArtistas();
+});
 
 $('#artistas').onclick = function(e){
   var btn = e.target.closest ? e.target.closest('.art') : null;
@@ -433,9 +483,39 @@ function mostrarPlaylist(pl, nombre){
         '<span class="tema-d">' + t.dur + '</span></div>';
     }).join('') +
     '<p class="leyenda">Las marcadas con <i></i> son de los artistas que elegiste. ' +
-    'El resto son de artistas que comparten género con ellos.</p>';
+    'El resto son de artistas que comparten género con ellos.</p>' +
+    '<div class="acciones"><a class="b-main enlace-btn" id="enviar" href="' +
+      esc(enlaceCorreo(pl, nombre)) + '">Enviármela por correo</a></div>';
+
+  $('#enviar').addEventListener('click', function(){
+    anotar('POST','/users/' + estado.activa + '/playlist/email', 200, 'abriendo cliente de correo');
+  });
   $('#p3').classList.remove('off');
   $('#p3').classList.add('hecho');
+}
+
+/* Una pagina estatica no puede enviar correo por si sola: eso necesita un
+   servidor. mailto: abre el cliente de correo con todo escrito y la persona
+   solo pulsa enviar. Va como <a> y no como boton para que funcione tambien
+   sin JavaScript y se pueda abrir en otra pestana. */
+function enlaceCorreo(pl, nombre){
+  var p = persona();
+  var destino = (p && p.email) ? p.email : '';
+  var lineas = pl.map(function(t,i){
+    return (i+1) + '. ' + t.titulo + ' - ' + t.artista + '  (' + t.dur + ')';
+  }).join('\n');
+
+  var cuerpo =
+    'Hola ' + nombre + ',\n\n' +
+    'Aqui esta tu playlist, armada a partir de: ' + estado.elegidos.join(', ') + '.\n\n' +
+    lineas + '\n\n' +
+    'enjoy your playlist!\n\n' +
+    'saluditoss,\n' +
+    'AB';
+
+  return 'mailto:' + destino +
+    '?subject=' + encodeURIComponent('Tu playlist de Artist Finder') +
+    '&body=' + encodeURIComponent(cuerpo);
 }
 
 function ocultarPlaylist(){
