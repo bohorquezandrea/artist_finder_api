@@ -80,6 +80,14 @@ input::placeholder{color:var(--ink-muted)}
 .punto{width:8px;height:8px;border-radius:50%;background:var(--line);transition:background .3s var(--ease)}
 .punto.on{background:var(--warm)}
 
+.sp-barra{display:flex;gap:9px;margin-bottom:10px;flex-wrap:wrap}
+.sp-barra .buscador{flex:1 1 180px;margin:0}
+.b-sp{flex:none;white-space:nowrap;padding:14px 18px;font-size:11px}
+.b-sp.on{background:#1DB954;border-color:#1DB954;color:#0B1913}
+.sp-nota{font-size:12.5px;color:var(--ink-muted);margin-bottom:12px;display:none}
+.sp-nota.on{display:block}
+.sp-nota.err{color:#E8897C}
+.art-img{width:100%;aspect-ratio:1;border-radius:10px;object-fit:cover;margin-bottom:9px;background:var(--surface-2)}
 .buscador{margin-bottom:12px}
 .sin-res{display:none;font-size:13.5px;color:var(--ink-muted);padding:14px 2px}
 .sin-res.on{display:block}
@@ -201,7 +209,11 @@ a{color:var(--accent)}
     <span id="cuenta">0 de 3</span>
     <span class="puntos"><i class="punto"></i><i class="punto"></i><i class="punto"></i></span>
   </div>
-  <input id="buscar" class="buscador" placeholder="¿No está? Búscalo aquí" autocomplete="off">
+  <div class="sp-barra">
+    <input id="buscar" class="buscador" placeholder="¿No está? Búscalo aquí" autocomplete="off">
+    <button class="b-ghost b-sp" id="conectar">Conectar Spotify</button>
+  </div>
+  <p class="sp-nota" id="sp-nota"></p>
   <div class="artistas" id="artistas"></div>
   <p class="sin-res" id="sin-res">No tengo a ese artista en el catálogo todavía.</p>
   <div class="acciones">
@@ -314,6 +326,7 @@ var CATALOGO = [
 // Lo que se escriba en el buscador filtra TODO el catalogo; sin texto se
 // muestran solo los destacados.
 var filtro = '';
+var spResultados = [];   // artistas traidos de Spotify en la busqueda actual
 
 // Envio de correo via EmailJS
 var EMAILJS = {
@@ -322,6 +335,28 @@ var EMAILJS = {
     templateId: 'template_7wjkkp8'  // Template ID
 };
 var EMAILJS_LISTO = !!(EMAILJS.publicKey && EMAILJS.serviceId && EMAILJS.templateId);
+
+/* -------------------------------------------------------------
+   SPOTIFY (Authorization Code + PKCE)
+
+   Este es el flujo que Spotify hizo para apps de navegador SIN servidor.
+   No usa el client_secret en ningun momento: en su lugar el navegador
+   genera un codigo aleatorio (code_verifier), manda solo su hash, y al
+   canjear el token demuestra que lo tiene. Por eso es seguro publicarlo.
+
+   El client_id SI es publico por diseno: viaja en la URL de cualquier
+   login de Spotify.
+
+   Para que funcione hay que registrar la Redirect URI en
+   developer.spotify.com/dashboard -> tu app -> Settings:
+     https://bohorquezandrea.github.io/artist_finder_api/
+   ------------------------------------------------------------- */
+var SPOTIFY = {
+  clientId: '8606d297cdb54e7794a9b6fd1a43fb9a',
+  redirect: location.origin + location.pathname,
+  scopes: ''            // buscar y leer top-tracks no necesita permisos
+};
+var spToken = sessionStorage.getItem('sp_token') || null;
 
 var CLAVE = 'artist_finder_v2';
 function $(s){ return document.querySelector(s); }
@@ -354,6 +389,113 @@ function anotar(metodo, ruta, estadoHttp, extra){
     '<span class="m">' + metodo + '</span> ' + esc(ruta) +
     ' <span class="ok">' + estadoHttp + '</span>' + (extra ? ' <span class="t">' + esc(extra) + '</span>' : '');
   log.insertBefore(d, log.firstChild);
+}
+
+
+/* =============================================================
+   PKCE: conectar con Spotify sin secreto
+   ============================================================= */
+function aleatorio(n){
+  var a = new Uint8Array(n); crypto.getRandomValues(a);
+  return Array.from(a, function(b){ return ('0'+b.toString(16)).slice(-2); }).join('');
+}
+function base64url(buf){
+  return btoa(String.fromCharCode.apply(null, new Uint8Array(buf)))
+    .replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+async function reto(verificador){
+  var hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verificador));
+  return base64url(hash);
+}
+
+async function conectarSpotify(){
+  var verificador = aleatorio(48);
+  sessionStorage.setItem('sp_verifier', verificador);
+  var params = new URLSearchParams({
+    client_id: SPOTIFY.clientId,
+    response_type: 'code',
+    redirect_uri: SPOTIFY.redirect,
+    code_challenge_method: 'S256',
+    code_challenge: await reto(verificador),
+    scope: SPOTIFY.scopes
+  });
+  anotar('GET','accounts.spotify.com/authorize',302,'PKCE, sin secreto');
+  location.href = 'https://accounts.spotify.com/authorize?' + params.toString();
+}
+
+/* Al volver de Spotify hay un ?code= en la URL: se canjea por el token
+   usando el verificador guardado. Aqui tampoco entra el secreto. */
+async function canjearCodigo(codigo){
+  var verificador = sessionStorage.getItem('sp_verifier');
+  if (!verificador) return;
+  var res = await fetch('https://accounts.spotify.com/api/token', {
+    method:'POST',
+    headers:{ 'Content-Type':'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: SPOTIFY.clientId,
+      grant_type: 'authorization_code',
+      code: codigo,
+      redirect_uri: SPOTIFY.redirect,
+      code_verifier: verificador
+    })
+  });
+  var data = await res.json();
+  if (data.access_token) {
+    spToken = data.access_token;
+    sessionStorage.setItem('sp_token', spToken);
+    sessionStorage.removeItem('sp_verifier');
+    anotar('POST','accounts.spotify.com/api/token',200,'token obtenido');
+  } else {
+    throw new Error(data.error_description || data.error || 'sin token');
+  }
+}
+
+function spEstado(texto, error){
+  var n = $('#sp-nota');
+  n.className = 'sp-nota on' + (error ? ' err' : '');
+  n.textContent = texto;
+}
+
+function marcarConectado(){
+  var b = $('#conectar');
+  b.textContent = 'Spotify conectado';
+  b.classList.add('on');
+  spEstado('Buscando en todo Spotify. Las canciones salen de sus top tracks reales.');
+}
+
+/* Busqueda real contra la API */
+async function spBuscarArtistas(q){
+  var r = await fetch('https://api.spotify.com/v1/search?type=artist&limit=9&q=' + encodeURIComponent(q),
+                      { headers:{ Authorization:'Bearer ' + spToken } });
+  if (r.status === 401) { spToken = null; sessionStorage.removeItem('sp_token'); throw new Error('sesion expirada'); }
+  if (!r.ok) throw new Error('busqueda ' + r.status);
+  var d = await r.json();
+  anotar('GET','/spotify/search?q=' + q, 200, (d.artists.items.length) + ' resultados');
+  return d.artists.items.map(function(a){
+    return { n:a.name, id:a.id, g:a.genres.length ? a.genres : ['spotify'],
+             img:(a.images && a.images.length ? a.images[a.images.length-1].url : ''), sp:true, t:[] };
+  });
+}
+
+async function spTopTracks(id, nombre){
+  var r = await fetch('https://api.spotify.com/v1/artists/' + id + '/top-tracks?market=CO',
+                      { headers:{ Authorization:'Bearer ' + spToken } });
+  if (!r.ok) return [];
+  var d = await r.json();
+  anotar('GET','/spotify/artist/' + nombre.toLowerCase() + '/top-tracks', 200, d.tracks.length + ' temas');
+  return d.tracks.map(function(t){
+    var m = Math.floor(t.duration_ms/60000), sg = Math.round((t.duration_ms%60000)/1000);
+    return [t.name, m + ':' + (sg<10?'0':'') + sg];
+  });
+}
+
+async function spArtistasDeGenero(genero){
+  var r = await fetch('https://api.spotify.com/v1/search?type=artist&limit=8&q=' +
+                      encodeURIComponent('genre:"' + genero + '"'),
+                      { headers:{ Authorization:'Bearer ' + spToken } });
+  if (!r.ok) return [];
+  var d = await r.json();
+  return d.artists.items.map(function(a){ return { n:a.name, id:a.id }; });
 }
 
 /* ---------- Paso 1 ---------- */
@@ -413,18 +555,26 @@ function pintarArtistas(){
   // Los ya elegidos se muestran siempre, para poder quitarlos sin borrar
   // lo que se escribio en el buscador.
   var qn = normalizar(q);
-  var visibles = CATALOGO.filter(function(a){
+  var fuente = CATALOGO.concat(spResultados);
+  var visibles = fuente.filter(function(a){
     if (estado.elegidos.indexOf(a.n) !== -1) return true;
     if (!qn) return !!a.d;
+    if (a.sp) return true;               // ya viene filtrado por Spotify
     return normalizar(a.n).indexOf(qn) !== -1 ||
            a.g.some(function(g){ return normalizar(g).indexOf(qn) !== -1; });
+  });
+  // sin duplicados por nombre
+  var vistos = {};
+  visibles = visibles.filter(function(a){
+    if (vistos[a.n]) return false; vistos[a.n] = 1; return true;
   });
 
   $('#artistas').innerHTML = visibles.map(function(a){
     var sel = estado.elegidos.indexOf(a.n) !== -1;
     return '<button class="art' + (sel ? ' sel' : '') + (lleno && !sel ? ' lleno' : '') + '" data-a="' + esc(a.n) + '">' +
+           (a.img ? '<img class="art-img" src="' + esc(a.img) + '" alt="" loading="lazy">' : '') +
            '<span class="art-n">' + esc(a.n) + '</span>' +
-           '<span class="art-g">' + a.g[0] + '</span></button>';
+           '<span class="art-g">' + esc(a.g[0]) + '</span></button>';
   }).join('');
 
   $('#sin-res').classList.toggle('on', q.length > 1 && visibles.length === estado.elegidos.length);
@@ -433,9 +583,28 @@ function pintarArtistas(){
   $('#armar').disabled = estado.elegidos.length !== 3;
 }
 
+var tBusq;
 $('#buscar').addEventListener('input', function(e){
   filtro = e.target.value;
-  pintarArtistas();
+  if (!spToken) { spResultados = []; return pintarArtistas(); }
+  clearTimeout(tBusq);
+  var q = filtro.trim();
+  if (q.length < 2) { spResultados = []; return pintarArtistas(); }
+  // antirrebote: sin esto se dispara una peticion por tecla
+  tBusq = setTimeout(function(){
+    spBuscarArtistas(q).then(function(res){
+      spResultados = res; pintarArtistas();
+    }).catch(function(err){
+      spResultados = [];
+      spEstado('Spotify: ' + err.message + '. Se muestra el catálogo local.', true);
+      pintarArtistas();
+    });
+  }, 320);
+});
+
+$('#conectar').addEventListener('click', function(){
+  if (spToken) { spEstado('Ya estás conectado.'); return; }
+  conectarSpotify();
 });
 
 $('#artistas').onclick = function(e){
@@ -449,6 +618,8 @@ $('#artistas').onclick = function(e){
   } else {
     if (estado.elegidos.length >= 3) return;
     estado.elegidos.push(nombre);
+    var desdeSp = spResultados.filter(function(a){ return a.n === nombre; })[0];
+    if (desdeSp) { estado.spElegidos = (estado.spElegidos || []).concat([desdeSp]); }
     anotar('POST','/users/' + estado.activa + '/artists', 201, '{"artists":' + estado.elegidos.length + '}');
   }
   var p = persona();
@@ -501,16 +672,67 @@ function barajar(a){
   return a;
 }
 
-$('#armar').onclick = function(){
+$('#armar').onclick = async function(){
   var p = persona(); if (!p) return;
-  estado.elegidos.forEach(function(n){
-    anotar('GET','/spotify/artist/' + n.toLowerCase(), 200, 'afinidad por genero');
+  var btn = this;
+  btn.disabled = true;
+
+  var pl;
+  var deSpotify = estado.elegidos.filter(function(n){
+    return spResultados.concat(estado.spElegidos || []).some(function(a){ return a.n === n && a.sp; });
   });
-  var pl = armarPlaylist(estado.elegidos);
+
+  if (spToken && deSpotify.length) {
+    try { pl = await armarConSpotify(); }
+    catch (e) { spEstado('No pude traer los temas de Spotify: ' + e.message, true); pl = armarPlaylist(estado.elegidos); }
+  } else {
+    estado.elegidos.forEach(function(n){
+      anotar('GET','/spotify/artist/' + n.toLowerCase(), 200, 'afinidad por genero');
+    });
+    pl = armarPlaylist(estado.elegidos);
+  }
+
   p.playlist = pl; p.artists = estado.elegidos.slice(); guardar();
   mostrarPlaylist(pl, p.name);
+  btn.disabled = false;
   $('#p3').scrollIntoView({ behavior:'smooth', block:'start' });
 };
+
+/* Playlist con datos reales: 2 top-tracks de cada elegido y 4 de
+   artistas del mismo genero segun Spotify. */
+async function armarConSpotify(){
+  var elegidos = estado.elegidos.map(function(n){
+    return (estado.spElegidos || []).concat(spResultados).filter(function(a){ return a.n === n; })[0]
+        || CATALOGO.filter(function(a){ return a.n === n; })[0];
+  });
+
+  var lista = [], generos = {};
+  for (var i = 0; i < elegidos.length; i++) {
+    var a = elegidos[i];
+    a.g.forEach(function(g){ if (g !== 'spotify') generos[g] = true; });
+    var temas = a.sp ? await spTopTracks(a.id, a.n) : barajar(a.t.slice());
+    temas.slice(0, 2).forEach(function(t){
+      lista.push({ titulo:t[0], artista:a.n, dur:t[1], base:true });
+    });
+  }
+
+  var claves = Object.keys(generos);
+  var extras = [];
+  if (claves.length) {
+    var afines = await spArtistasDeGenero(claves[Math.floor(Math.random()*claves.length)]);
+    afines = barajar(afines).filter(function(x){ return estado.elegidos.indexOf(x.n) === -1; });
+    for (var j = 0; j < afines.length && extras.length < 4; j++) {
+      var tt = await spTopTracks(afines[j].id, afines[j].n);
+      if (tt.length) extras.push({ titulo:tt[0][0], artista:afines[j].n, dur:tt[0][1], base:false });
+    }
+  }
+  while (extras.length < 4) {
+    var relleno = armarPlaylist(estado.elegidos).filter(function(t){ return !t.base; });
+    if (!relleno.length) break;
+    extras.push(relleno[extras.length % relleno.length]);
+  }
+  return barajar(lista).concat(extras.slice(0,4));
+}
 
 function mostrarPlaylist(pl, nombre){
   var total = pl.reduce(function(acc,t){
@@ -660,6 +882,25 @@ function refrescar(){
 })();
 
 $('#n-name').addEventListener('keydown', function(e){ if (e.key === 'Enter') $('#crear').click(); });
+
+// Vuelta de Spotify: canjear el codigo y limpiar la URL
+(function(){
+  var qp = new URLSearchParams(location.search);
+  if (qp.get('code')) {
+    canjearCodigo(qp.get('code')).then(function(){
+      history.replaceState({}, '', location.pathname);
+      marcarConectado();
+    }).catch(function(e){
+      history.replaceState({}, '', location.pathname);
+      spEstado('No se pudo conectar con Spotify: ' + e.message + '. El catálogo local sigue funcionando.', true);
+    });
+  } else if (qp.get('error')) {
+    history.replaceState({}, '', location.pathname);
+    spEstado('Conexión cancelada. El catálogo local sigue funcionando.', true);
+  } else if (spToken) {
+    marcarConectado();
+  }
+})();
 
 anotar('GET','/users',200,'estado inicial cargado');
 seleccionar(estado.personas[0].id);
