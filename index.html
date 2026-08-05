@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#10231C">
+<meta name="description" content="Artist Finder API: REST en Flask con integracion a Spotify. Referencia de endpoints. Proyecto de Andrea Bohorquez.">
+<title>Artist Finder API · Andrea Bohorquez</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#10231C; --surface:#163026; --surface-2:#1B3B2F; --line:#22453A;
+  --ink:#F5EEE0; --ink-soft:#C3D6CC; --ink-muted:#8FA89C;
+  --accent:#C9B8F5; --warm:#EDBEB0;
+  --get:#8FCB7A; --post:#7CA8E8; --put:#F2D06B; --del:#E8897C;
+  --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;padding:0 20px 80px;background:var(--bg);color:var(--ink);
+  font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;line-height:1.6}
+.wrap{max-width:920px;margin:0 auto}
+.eyebrow{font-size:11px;font-weight:600;letter-spacing:.3em;text-transform:uppercase;color:var(--ink-muted);margin:0 0 14px}
+header{padding:56px 0 8px}
+h1{margin:0 0 14px;font-size:clamp(34px,6vw,58px);font-weight:700;letter-spacing:-.03em;line-height:1}
+h1 em{font-style:normal;color:var(--accent)}
+.lede{margin:0 0 24px;max-width:60ch;color:var(--ink-soft)}
+.stack{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.chip{font-size:11px;letter-spacing:.04em;padding:5px 11px;border:1px solid var(--line);
+  border-radius:999px;color:var(--ink-muted)}
+.note{margin:32px 0 0;padding:18px 20px;background:var(--surface);
+  border:1px solid var(--line);border-left:3px solid var(--warm);border-radius:10px;
+  font-size:14px;color:var(--ink-soft)}
+.note b{color:var(--ink)}
+h2{margin:56px 0 6px;font-size:13px;font-weight:600;letter-spacing:.2em;
+  text-transform:uppercase;color:var(--warm)}
+.h2sub{margin:0 0 20px;font-size:14px;color:var(--ink-muted)}
+.ep{margin-bottom:14px;background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.ep-head{display:flex;align-items:center;gap:12px;padding:14px 18px;flex-wrap:wrap}
+.verb{font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.06em;
+  padding:4px 9px;border-radius:6px;color:#10231C;min-width:60px;text-align:center}
+.get{background:var(--get)} .post{background:var(--post)}
+.put{background:var(--put)} .del{background:var(--del)}
+.path{font-family:var(--mono);font-size:14px;color:var(--ink)}
+.path span{color:var(--accent)}
+.desc{font-size:13px;color:var(--ink-muted);flex:1 1 100%;margin:0}
+pre{margin:0;padding:16px 18px;background:#0B1913;border-top:1px solid var(--line);
+  overflow-x:auto;font-family:var(--mono);font-size:12.5px;line-height:1.6;color:var(--ink-soft)}
+.k{color:var(--accent)} .s{color:var(--warm)} .n{color:var(--get)}
+footer{margin-top:64px;padding-top:24px;border-top:1px solid var(--line);
+  display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--ink-muted)}
+a{color:var(--accent)}
+code{font-family:var(--mono);font-size:.92em;background:var(--surface-2);padding:2px 6px;border-radius:5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">Python · Flask · Spotify Web API</p>
+  <h1>Artist Finder <em>API</em></h1>
+  <p class="lede">
+    API REST que gestiona usuarios y sus artistas favoritos, y consulta
+    informacion real de artistas y canciones contra la Spotify Web API.
+    Nueve endpoints, persistencia en JSON y autenticacion por client
+    credentials contra Spotify.
+  </p>
+  <div class="stack">
+    <span class="chip">Python</span><span class="chip">Flask</span>
+    <span class="chip">REST</span><span class="chip">Spotify Web API</span>
+    <span class="chip">OAuth client credentials</span><span class="chip">JSON</span>
+  </div>
+</header>
+
+<div class="note">
+  <b>Esta pagina es la referencia, no la API corriendo.</b> GitHub Pages
+  solo sirve archivos estaticos: no puede ejecutar Python. Para probarla de
+  verdad, clona el repositorio y levantala en local con
+  <code>flask run</code>, o desplegala en un servicio que ejecute Python.
+  Las credenciales de Spotify van en un <code>.env</code> y nunca se
+  publican.
+</div>
+
+<h2>Usuarios</h2>
+<p class="h2sub">CRUD completo sobre <code>users.json</code>.</p>
+
+<div class="ep">
+  <div class="ep-head"><span class="verb post">POST</span><span class="path">/users</span>
+    <p class="desc">Crea un usuario. Devuelve 400 si falta <code>name</code> o <code>email</code>.</p></div>
+<pre><span class="k">// peticion</span>
+{ <span class="k">"name"</span>: <span class="s">"Juan Carlos"</span>, <span class="k">"email"</span>: <span class="s">"jc@example.com"</span> }
+
+<span class="k">// 201 Created</span>
+{ <span class="k">"message"</span>: <span class="s">"Usuario creado con éxito"</span>,
+  <span class="k">"user"</span>: { <span class="k">"id"</span>: <span class="n">1</span>, <span class="k">"name"</span>: <span class="s">"Juan Carlos"</span>,
+            <span class="k">"email"</span>: <span class="s">"jc@example.com"</span>, <span class="k">"artists"</span>: [] } }</pre>
+</div>
+
+<div class="ep">
+  <div class="ep-head"><span class="verb get">GET</span><span class="path">/users</span>
+    <p class="desc">Lista todos los usuarios registrados.</p></div>
+<pre><span class="k">// 200 OK</span>
+[ { <span class="k">"id"</span>: <span class="n">1</span>, <span class="k">"name"</span>: <span class="s">"Juan Carlos"</span>,
+    <span class="k">"email"</span>: <span class="s">"jc@example.com"</span>, <span class="k">"artists"</span>: [<span class="s">"Coldplay"</span>] } ]</pre>
+</div>
+
+<div class="ep">
+  <div class="ep-head"><span class="verb get">GET</span><span class="path">/users/<span>&lt;id&gt;</span></span>
+    <p class="desc">Un usuario por id. 404 si no existe.</p></div>
+</div>
+
+<div class="ep">
+  <div class="ep-head"><span class="verb put">PUT</span><span class="path">/users/<span>&lt;id&gt;</span></span>
+    <p class="desc">Actualiza nombre o email. Los campos son opcionales.</p></div>
+<pre><span class="k">// peticion</span>
+{ <span class="k">"name"</span>: <span class="s">"Juan C. Perez"</span> }</pre>
+</div>
+
+<div class="ep">
+  <div class="ep-head"><span class="verb del">DELETE</span><span class="path">/users/<span>&lt;id&gt;</span></span>
+    <p class="desc">Elimina el usuario y persiste el cambio.</p></div>
+</div>
+
+<h2>Artistas favoritos</h2>
+<p class="h2sub">Lista de artistas asociada a cada usuario.</p>
+
+<div class="ep">
+  <div class="ep-head"><span class="verb post">POST</span><span class="path">/users/<span>&lt;id&gt;</span>/artists</span>
+    <p class="desc">Anade un artista a los favoritos del usuario.</p></div>
+<pre><span class="k">// peticion</span>
+{ <span class="k">"artist_name"</span>: <span class="s">"Coldplay"</span> }
+
+<span class="k">// 201 Created</span>
+{ <span class="k">"message"</span>: <span class="s">"Artista agregado con éxito"</span>,
+  <span class="k">"artists"</span>: [<span class="s">"Coldplay"</span>] }</pre>
+</div>
+
+<div class="ep">
+  <div class="ep-head"><span class="verb get">GET</span><span class="path">/users/<span>&lt;id&gt;</span>/artists</span>
+    <p class="desc">Devuelve los favoritos de ese usuario.</p></div>
+</div>
+
+<h2>Spotify</h2>
+<p class="h2sub">Consulta en vivo contra la Spotify Web API. El token se pide con client credentials en cada llamada.</p>
+
+<div class="ep">
+  <div class="ep-head"><span class="verb get">GET</span><span class="path">/spotify/artist/<span>&lt;nombre&gt;</span></span>
+    <p class="desc">Busca un artista y devuelve generos, seguidores y popularidad.</p></div>
+<pre><span class="k">// 200 OK</span>
+{ <span class="k">"name"</span>: <span class="s">"Coldplay"</span>,
+  <span class="k">"genres"</span>: [<span class="s">"permanent wave"</span>, <span class="s">"pop"</span>],
+  <span class="k">"followers"</span>: <span class="n">48250119</span>,
+  <span class="k">"popularity"</span>: <span class="n">89</span>,
+  <span class="k">"url"</span>: <span class="s">"https://open.spotify.com/artist/..."</span>,
+  <span class="k">"image"</span>: <span class="s">"https://i.scdn.co/image/..."</span> }</pre>
+</div>
+
+<div class="ep">
+  <div class="ep-head"><span class="verb get">GET</span><span class="path">/spotify/song/<span>&lt;nombre&gt;</span></span>
+    <p class="desc">Busca una cancion: album, fecha de lanzamiento, duracion y popularidad.</p></div>
+<pre><span class="k">// 200 OK</span>
+{ <span class="k">"name"</span>: <span class="s">"Yellow"</span>,
+  <span class="k">"artist"</span>: <span class="s">"Coldplay"</span>,
+  <span class="k">"album"</span>: <span class="s">"Parachutes"</span>,
+  <span class="k">"release_date"</span>: <span class="s">"2000-07-10"</span>,
+  <span class="k">"duration_ms"</span>: <span class="n">266773</span>,
+  <span class="k">"popularity"</span>: <span class="n">88</span> }</pre>
+</div>
+
+<h2>Levantarla en local</h2>
+<p class="h2sub">Necesitas credenciales de una app de Spotify for Developers.</p>
+<div class="ep">
+<pre>git clone https://github.com/bohorquezandrea/artist_finder_api.git
+cd artist_finder_api
+pip install -r requirements.txt
+
+<span class="k"># crea un .env con tus credenciales</span>
+echo <span class="s">"SPOTIFY_CLIENT_ID=tu_id"</span> &gt;&gt; .env
+echo <span class="s">"SPOTIFY_CLIENT_SECRET=tu_secreto"</span> &gt;&gt; .env
+
+python app.py   <span class="k"># http://127.0.0.1:5000</span></pre>
+</div>
+
+<footer>
+  <span><a href="https://github.com/bohorquezandrea/artist_finder_api">Codigo en GitHub</a></span>
+  <span>Construido por <a href="https://github.com/bohorquezandrea">Andrea Bohorquez</a></span>
+</footer>
+
+</div>
+</body>
+</html>
