@@ -289,22 +289,11 @@ var CATALOGO = [
 // muestran solo los destacados.
 var filtro = '';
 
-/* -------------------------------------------------------------
-   ENVIO DE CORREO (EmailJS)
-
-   Una pagina estatica no puede enviar correo: hace falta un servicio que
-   hable con el proveedor. EmailJS esta hecho para eso y sus tres
-   identificadores son publicos por diseno (no son contrasenas): la
-   proteccion real son los dominios permitidos que se configuran en su
-   panel.
-
-   Rellena los tres y el boton enviara de verdad. Vacios, el boton abre
-   el cliente de correo con todo escrito, que es como funciona ahora.
-   ------------------------------------------------------------- */
+// Envio de correo via EmailJS
 var EMAILJS = {
-  publicKey:  '',   // Account -> General -> Public Key
-  serviceId:  '',   // Email Services -> Service ID
-  templateId: ''    // Email Templates -> Template ID
+      publicKey: 'ysNn4TmGIufoll2HS', // Public Key
+    serviceId: 'service_b3unmck',   // Service ID
+    templateId: 'template_7wjkkp8'  // Template ID
 };
 var EMAILJS_LISTO = !!(EMAILJS.publicKey && EMAILJS.serviceId && EMAILJS.templateId);
 
