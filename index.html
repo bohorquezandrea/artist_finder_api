@@ -4,396 +4,477 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#10231C">
-<meta name="description" content="Artist Finder: gestiona usuarios y sus artistas favoritos. Cliente de la API REST en Flask de Andrea Bohorquez.">
+<meta name="description" content="Elige 3 artistas y te armamos una playlist de 10 canciones. Proyecto de Andrea Bohorquez.">
 <title>Artist Finder · Andrea Bohorquez</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
 <style>
 :root{
   --bg:#10231C; --surface:#163026; --surface-2:#1B3B2F; --line:#22453A;
   --ink:#F5EEE0; --ink-soft:#C3D6CC; --ink-muted:#8FA89C;
-  --accent:#C9B8F5; --warm:#EDBEB0; --danger:#E8897C; --ok:#8FCB7A;
+  --accent:#C9B8F5; --warm:#EDBEB0;
   --mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
   --ease:cubic-bezier(.22,1,.36,1);
 }
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--ink);font-family:'Inter',-apple-system,sans-serif;
-  line-height:1.6;padding:0 20px 80px}
-.wrap{max-width:1060px;margin:0 auto}
-.eyebrow{font-size:11px;font-weight:600;letter-spacing:.3em;text-transform:uppercase;color:var(--ink-muted);margin-bottom:14px}
-header{padding:56px 0 34px}
-h1{font-size:clamp(34px,6vw,58px);font-weight:700;letter-spacing:-.03em;line-height:1;margin-bottom:16px}
+body{background:var(--bg);color:var(--ink);
+  font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
+  line-height:1.6;padding:0 18px 90px;overflow-x:hidden}
+.wrap{max-width:760px;margin:0 auto;position:relative;z-index:1}
+
+/* ---------- Notas musicales de fondo ---------- */
+.notas{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
+.nota{position:absolute;bottom:-40px;color:var(--accent);opacity:0;
+  font-size:20px;animation:subir linear infinite;user-select:none}
+@keyframes subir{
+  0%{opacity:0;transform:translateY(0) rotate(0deg) scale(.8)}
+  10%{opacity:.20}
+  50%{opacity:.13}
+  90%{opacity:.06}
+  100%{opacity:0;transform:translateY(-108vh) rotate(22deg) scale(1.1)}
+}
+@media(prefers-reduced-motion:reduce){.notas{display:none}}
+
+/* ---------- Cabecera ---------- */
+header{padding:52px 0 30px;text-align:center}
+.eyebrow{font-size:10.5px;font-weight:600;letter-spacing:.28em;text-transform:uppercase;
+  color:var(--ink-muted);margin-bottom:14px}
+h1{font-size:clamp(38px,10vw,64px);font-weight:800;letter-spacing:-.04em;line-height:.95;margin-bottom:16px}
 h1 em{font-style:normal;color:var(--accent)}
-.lede{max-width:62ch;color:var(--ink-soft);margin-bottom:22px}
-.chips{display:flex;gap:8px;flex-wrap:wrap}
-.chip{font-size:11px;padding:5px 11px;border:1px solid var(--line);border-radius:999px;color:var(--ink-muted)}
+.lede{font-size:15.5px;color:var(--ink-soft);max-width:44ch;margin:0 auto}
 
-.cols{display:grid;gap:22px;grid-template-columns:1fr}
-@media(min-width:900px){.cols{grid-template-columns:1fr 1fr;align-items:start}}
+/* ---------- Pasos ---------- */
+.paso{background:var(--surface);border:1px solid var(--line);border-radius:20px;
+  padding:24px 20px;margin-bottom:16px;transition:opacity .4s var(--ease)}
+.paso.off{opacity:.4;pointer-events:none}
+.paso-h{display:flex;align-items:center;gap:12px;margin-bottom:6px}
+.paso-n{flex:none;width:27px;height:27px;border-radius:50%;background:var(--accent);color:#10231C;
+  display:grid;place-items:center;font-size:13px;font-weight:800}
+.paso.hecho .paso-n{background:var(--warm)}
+.paso-h h2{font-size:17px;font-weight:700;letter-spacing:-.02em}
+.paso-s{font-size:13.5px;color:var(--ink-muted);margin-bottom:18px;padding-left:39px}
 
-.panel{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:26px 24px;margin-bottom:22px}
-.panel h2{font-size:13px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:var(--warm);margin-bottom:6px}
-.panel .hint{font-family:var(--mono);font-size:12px;color:var(--ink-muted);margin-bottom:20px}
-
-input{width:100%;padding:12px 15px;font:inherit;font-size:14px;color:var(--ink);
-  background:var(--bg);border:1px solid var(--line);border-radius:10px;margin-bottom:14px;
+/* ---------- Persona ---------- */
+.campos{display:grid;gap:10px}
+@media(min-width:560px){.campos{grid-template-columns:1fr 1fr}}
+input{width:100%;padding:14px 16px;font:inherit;font-size:15px;color:var(--ink);
+  background:var(--bg);border:1px solid var(--line);border-radius:12px;
   transition:border-color .25s var(--ease)}
 input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(201,184,245,.16)}
 input::placeholder{color:var(--ink-muted)}
-.row{display:flex;gap:10px;flex-wrap:wrap}
-.row input{flex:1 1 150px}
 
-button{font:inherit;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
-  padding:12px 20px;border:1px solid transparent;border-radius:999px;cursor:pointer;
-  transition:transform .25s var(--ease)}
-button:hover{transform:translateY(-2px)}
-button:active{transform:none}
-.b-main{background:var(--accent);color:#10231C}
+.personas{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.persona{display:inline-flex;align-items:center;gap:9px;padding:9px 14px;border-radius:999px;
+  background:var(--bg);border:1px solid var(--line);font-size:13.5px;cursor:pointer;
+  transition:border-color .25s var(--ease),background .25s var(--ease)}
+.persona:hover{border-color:var(--accent)}
+.persona.sel{background:var(--accent);color:#10231C;border-color:var(--accent);font-weight:600}
+.persona x{cursor:pointer;font-size:15px;line-height:1;opacity:.55}
+.persona x:hover{opacity:1}
+
+/* ---------- Artistas ---------- */
+.contador{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:600;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--warm);margin-bottom:16px;padding-left:39px}
+.puntos{display:flex;gap:5px}
+.punto{width:8px;height:8px;border-radius:50%;background:var(--line);transition:background .3s var(--ease)}
+.punto.on{background:var(--warm)}
+
+.artistas{display:grid;gap:9px;grid-template-columns:repeat(2,1fr)}
+@media(min-width:560px){.artistas{grid-template-columns:repeat(3,1fr)}}
+.art{position:relative;padding:14px 12px;border-radius:14px;background:var(--bg);
+  /* color explicito: los <button> NO heredan color del padre, usan el del
+     navegador. Sin esto los nombres salian oscuros sobre fondo oscuro. */
+  color:var(--ink);
+  border:1px solid var(--line);cursor:pointer;text-align:left;
+  transition:transform .25s var(--ease),border-color .25s var(--ease),background .25s var(--ease)}
+.art:hover{transform:translateY(-3px);border-color:var(--accent)}
+.art.sel{background:var(--accent);border-color:var(--accent)}
+.art-n{display:block;font-size:14px;font-weight:600;letter-spacing:-.01em;line-height:1.25;margin-bottom:3px}
+.art.sel .art-n{color:#10231C}
+.art-g{display:block;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-muted)}
+.art.sel .art-g{color:#2C4C40}
+.art.lleno:not(.sel){opacity:.42}
+
+/* ---------- Boton ---------- */
+.acciones{margin-top:20px;display:flex;gap:10px;flex-wrap:wrap}
+button{font:inherit;color:inherit;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  padding:15px 26px;border:1px solid transparent;border-radius:999px;cursor:pointer;
+  transition:transform .25s var(--ease),opacity .25s var(--ease)}
+button:hover:not(:disabled){transform:translateY(-2px)}
+button:disabled{opacity:.35;cursor:not-allowed}
+.b-main{background:var(--accent);color:#10231C;flex:1 1 auto}
 .b-ghost{background:transparent;border-color:var(--line);color:var(--ink)}
 .b-ghost:hover{border-color:var(--accent);color:var(--accent)}
-.b-mini{padding:7px 13px;font-size:10px}
-.b-danger{background:transparent;border-color:var(--line);color:var(--danger)}
-.b-danger:hover{border-color:var(--danger)}
 
-.users{list-style:none;display:grid;gap:12px}
-.user{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
-.user-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:4px}
-.user-name{font-size:16px;font-weight:600;letter-spacing:-.01em}
-.user-id{font-family:var(--mono);font-size:11px;color:var(--accent);white-space:nowrap}
-.user-mail{font-size:13px;color:var(--ink-muted);margin-bottom:12px;word-break:break-all}
-.artists{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
-.artist{font-size:11px;padding:4px 10px;border-radius:999px;background:var(--surface-2);color:var(--ink-soft);
-  display:inline-flex;align-items:center;gap:8px}
-.artist b{cursor:pointer;color:var(--ink-muted);font-weight:400;font-size:13px;line-height:1}
-.artist b:hover{color:var(--danger)}
-.user-actions{display:flex;gap:8px;flex-wrap:wrap;padding-top:12px;border-top:1px solid var(--line)}
-.empty{color:var(--ink-muted);font-size:14px;text-align:center;padding:26px 0}
+/* ---------- Playlist ---------- */
+.playlist{display:none}
+.playlist.on{display:block}
+.pl-top{display:flex;align-items:baseline;justify-content:space-between;gap:12px;
+  flex-wrap:wrap;margin-bottom:18px;padding-bottom:16px;border-bottom:1px solid var(--line)}
+.pl-para{font-size:19px;font-weight:700;letter-spacing:-.02em}
+.pl-meta{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-muted)}
 
-.log{font-family:var(--mono);font-size:12px;line-height:1.7;background:#0B1913;border:1px solid var(--line);
-  border-radius:12px;padding:16px 18px;max-height:300px;overflow-y:auto}
-.log div{margin-bottom:5px;word-break:break-all}
-.log .m{color:var(--accent);font-weight:500}
-.log .ok{color:var(--ok)}
-.log .er{color:var(--danger)}
-.log .t{color:var(--ink-muted)}
+.tema{display:flex;align-items:center;gap:14px;padding:11px 0;border-bottom:1px solid var(--line);
+  opacity:0;animation:entra .5s var(--ease) forwards}
+.tema:last-child{border-bottom:0}
+@keyframes entra{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.tema-n{flex:none;width:24px;font-family:var(--mono);font-size:12px;color:var(--ink-muted);text-align:right}
+.tema-i{flex:1;min-width:0}
+.tema-t{display:block;font-size:14.5px;font-weight:600;letter-spacing:-.01em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tema-a{display:block;font-size:12.5px;color:var(--ink-muted);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tema-d{flex:none;font-family:var(--mono);font-size:12px;color:var(--ink-muted)}
+.tema.base .tema-t::after{content:'';display:inline-block;width:5px;height:5px;border-radius:50%;
+  background:var(--warm);margin-left:8px;vertical-align:middle}
 
-.note{padding:16px 18px;background:var(--surface);border:1px solid var(--line);
-  border-left:3px solid var(--warm);border-radius:10px;font-size:13.5px;color:var(--ink-soft);margin-bottom:22px}
-.note b{color:var(--ink)}
-code{font-family:var(--mono);font-size:.9em;background:var(--surface-2);padding:2px 6px;border-radius:5px}
+.leyenda{margin-top:18px;padding-top:16px;border-top:1px solid var(--line);
+  font-size:12.5px;color:var(--ink-muted)}
+.leyenda i{display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--warm);
+  margin:0 5px;vertical-align:middle;font-style:normal}
 
-.result{margin-top:16px;padding:18px;background:var(--bg);border:1px solid var(--line);border-radius:12px;display:none}
-.result.on{display:block}
-.res-top{display:flex;gap:16px;align-items:center;margin-bottom:14px}
-.res-top img{width:76px;height:76px;border-radius:12px;object-fit:cover;flex:none;background:var(--surface-2)}
-.res-name{font-size:19px;font-weight:600;letter-spacing:-.01em}
-.res-sub{font-size:12.5px;color:var(--ink-muted)}
-.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
-.stat{background:var(--surface);border-radius:10px;padding:12px 14px}
-.stat b{display:block;font-size:18px;font-weight:600;color:var(--warm)}
-.stat span{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-muted)}
-.genres{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
-
-footer{margin-top:56px;padding-top:24px;border-top:1px solid var(--line);
-  display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--ink-muted)}
-a{color:var(--accent)}
-
-.guia{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:28px 26px;margin-bottom:16px}
-.guia-t{font-size:13px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:var(--warm);margin-bottom:20px}
-.pasos{list-style:none;display:grid;gap:16px;margin-bottom:20px}
-@media(min-width:820px){.pasos{grid-template-columns:repeat(3,1fr);gap:22px}}
-.pasos li{display:flex;gap:14px;align-items:flex-start}
-.pasos span{flex:none;width:28px;height:28px;border-radius:50%;background:var(--accent);color:#10231C;
-  display:grid;place-items:center;font-size:13px;font-weight:700}
-.pasos b{display:block;font-size:15px;font-weight:600;margin-bottom:3px}
-.pasos div{font-size:13.5px;color:var(--ink-soft);line-height:1.55}
-.pasos em{font-style:normal;color:var(--accent);font-weight:500}
-.guia-p{font-size:13.5px;color:var(--ink-muted);padding-top:18px;border-top:1px solid var(--line)}
-
-.tecnico{margin-bottom:22px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:0 20px}
-.tecnico summary{cursor:pointer;padding:15px 0;font-size:12px;font-weight:600;letter-spacing:.14em;
+/* ---------- Bloque tecnico ---------- */
+.tecnico{margin-top:20px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:0 20px}
+.tecnico summary{cursor:pointer;padding:16px 0;font-size:11.5px;font-weight:600;letter-spacing:.14em;
   text-transform:uppercase;color:var(--ink-muted);list-style:none}
 .tecnico summary::-webkit-details-marker{display:none}
 .tecnico summary::before{content:'+ ';color:var(--accent)}
 .tecnico[open] summary::before{content:'\2212 '}
 .tecnico[open] summary{border-bottom:1px solid var(--line);margin-bottom:14px}
-.tecnico p{font-size:13.5px;color:var(--ink-soft);padding-bottom:16px}
-@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+.tecnico p{font-size:13.5px;color:var(--ink-soft);padding-bottom:14px}
+.log{font-family:var(--mono);font-size:11.5px;line-height:1.7;background:#0B1913;
+  border:1px solid var(--line);border-radius:10px;padding:14px;max-height:190px;
+  overflow-y:auto;margin-bottom:16px}
+.log div{margin-bottom:4px;word-break:break-all}
+.log .m{color:var(--accent)}
+.log .ok{color:#8FCB7A}
+.log .t{color:var(--ink-muted)}
+code{font-family:var(--mono);font-size:.9em;background:var(--surface-2);padding:2px 6px;border-radius:5px}
+
+footer{margin-top:44px;text-align:center;font-size:12.5px;color:var(--ink-muted)}
+a{color:var(--accent)}
 </style>
 </head>
 <body>
+
+<div class="notas" id="notas" aria-hidden="true"></div>
+
 <div class="wrap">
 
 <header>
   <p class="eyebrow">Python · Flask · Spotify Web API</p>
   <h1>Artist <em>Finder</em></h1>
-  <p class="lede">
-    Una libreta de artistas favoritos. Registras a alguien, le vas guardando
-    los artistas que le gustan, y puedes consultar informacion real de
-    cualquier artista: cuantos seguidores tiene, que generos toca y que tan
-    popular es ahora mismo.
-  </p>
-  <div class="chips">
-    <span class="chip">Python</span><span class="chip">Flask</span>
-    <span class="chip">REST</span><span class="chip">Spotify Web API</span>
-    <span class="chip">OAuth client credentials</span>
-  </div>
+  <p class="lede">Elige tus 3 artistas favoritos y te armamos una playlist de 10 canciones hechas a tu medida.</p>
 </header>
 
-<div class="guia">
-  <h2 class="guia-t">Pruebala en 3 pasos</h2>
-  <ol class="pasos">
-    <li><span>1</span><div><b>Crea una persona</b>
-      Escribe un nombre y un correo, y dale a crear. Aparece en la lista de abajo.</div></li>
-    <li><span>2</span><div><b>Guardale artistas</b>
-      En su tarjeta, toca <em>+ Artista</em> y escribe el que quieras. Puedes anadir
-      los que quieras y quitarlos con la equis.</div></li>
-    <li><span>3</span><div><b>Busca un artista</b>
-      Escribe <em>coldplay</em>, <em>karol g</em>, <em>bad bunny</em> o
-      <em>taylor swift</em> y mira sus seguidores, generos y popularidad.</div></li>
-  </ol>
-  <p class="guia-p">
-    Todo lo que hagas se guarda solo en tu navegador, asi que puedes trastear
-    tranquilo. Si recargas sigue ahi; nadie mas lo ve.
-  </p>
-</div>
+<!-- PASO 1 -->
+<section class="paso" id="p1">
+  <div class="paso-h"><span class="paso-n">1</span><h2>¿Para quién es?</h2></div>
+  <p class="paso-s">Escribe un nombre, o toca uno que ya esté creado.</p>
+  <div class="campos">
+    <input id="n-name" placeholder="Nombre (ej: Andrea)" autocomplete="off">
+    <input id="n-mail" placeholder="Correo (opcional)" autocomplete="off">
+  </div>
+  <div class="acciones">
+    <button class="b-main" id="crear">Crear persona</button>
+  </div>
+  <div class="personas" id="personas"></div>
+</section>
+
+<!-- PASO 2 -->
+<section class="paso off" id="p2">
+  <div class="paso-h"><span class="paso-n">2</span><h2>Elige 3 artistas</h2></div>
+  <p class="paso-s">Toca los que más te gusten. Si te arrepientes, tócalos otra vez.</p>
+  <div class="contador">
+    <span id="cuenta">0 de 3</span>
+    <span class="puntos"><i class="punto"></i><i class="punto"></i><i class="punto"></i></span>
+  </div>
+  <div class="artistas" id="artistas"></div>
+  <div class="acciones">
+    <button class="b-main" id="armar" disabled>Armar mi playlist</button>
+    <button class="b-ghost" id="limpiar">Empezar de nuevo</button>
+  </div>
+</section>
+
+<!-- PASO 3 -->
+<section class="paso off" id="p3">
+  <div class="paso-h"><span class="paso-n">3</span><h2>Tu playlist</h2></div>
+  <p class="paso-s" id="p3sub">Aparecerá aquí cuando elijas tus 3 artistas.</p>
+  <div class="playlist" id="playlist"></div>
+</section>
 
 <details class="tecnico">
-  <summary>Para quien venga a ver el codigo</summary>
+  <summary>Para quien venga a ver el código</summary>
   <p>
-    El proyecto original es una API REST en Flask con nueve endpoints y
-    autenticacion por client credentials contra la Spotify Web API. GitHub
-    Pages solo sirve archivos estaticos y no ejecuta Python, asi que esta
-    pagina replica la logica del backend contra <code>localStorage</code>:
-    mismas validaciones, mismos codigos de estado y misma forma de
-    respuesta. El registro de la derecha muestra el metodo y la ruta que
-    se enviarian al servidor real.
+    El proyecto original es una API REST en <b>Flask</b> con nueve endpoints
+    y autenticación por client credentials contra la Spotify Web API. GitHub
+    Pages solo sirve archivos estáticos y no ejecuta Python, así que esta
+    página replica la lógica del backend contra <code>localStorage</code>.
   </p>
   <p>
-    La busqueda en Spotify devuelve ejemplos porque ese endpoint si necesita
-    el servidor: el <code>client_secret</code> no puede viajar al navegador.
+    La playlist se arma con un catálogo local y un criterio de afinidad por
+    género: dos temas de cada artista elegido y cuatro de artistas que
+    comparten género con ellos. Con el servidor encendido, esas mismas
+    canciones vendrían de <code>GET /spotify/artist/&lt;nombre&gt;</code>.
   </p>
+  <div class="log" id="log"></div>
 </details>
 
-<div class="cols">
-
-  <div>
-    <div class="panel">
-      <h2>Anadir persona</h2>
-      <p class="hint">POST /users</p>
-      <div class="row">
-        <input id="n-name" placeholder="Nombre (ej: Andrea)" autocomplete="off">
-        <input id="n-mail" placeholder="correo@ejemplo.com" autocomplete="off">
-      </div>
-      <button class="b-main" id="crear">Crear usuario</button>
-    </div>
-
-    <div class="panel">
-      <h2>Usuarios</h2>
-      <p class="hint">GET /users</p>
-      <ul class="users" id="lista"></ul>
-    </div>
-  </div>
-
-  <div>
-    <div class="panel">
-      <h2>Buscar un artista</h2>
-      <p class="hint">GET /spotify/artist/&lt;nombre&gt;</p>
-      <div class="row">
-        <input id="q" placeholder="coldplay" autocomplete="off">
-        <button class="b-main" id="buscar">Buscar</button>
-      </div>
-      <div class="result" id="res"></div>
-    </div>
-
-    <div class="panel">
-      <h2>Registro de peticiones</h2>
-      <p class="hint">Metodo y ruta equivalentes en el backend</p>
-      <div class="log" id="log"></div>
-    </div>
-  </div>
-
-</div>
-
 <footer>
-  <span><a href="https://github.com/bohorquezandrea/artist_finder_api">Codigo en GitHub</a></span>
-  <span>Construido por <a href="https://github.com/bohorquezandrea">Andrea Bohorquez</a></span>
+  <a href="https://github.com/bohorquezandrea/artist_finder_api">Código en GitHub</a>
+  · Construido por <a href="https://github.com/bohorquezandrea">Andrea Bohorquez</a>
 </footer>
 
 </div>
 
 <script>
 /* =============================================================
-   Replica en cliente de la API de Flask.
-
-   Cada accion escribe en localStorage y deja constancia del metodo, la
-   ruta y el codigo de estado equivalentes del backend: mismas
-   validaciones y misma forma de respuesta.
+   Catalogo local. Sin backend no hay token de Spotify, asi que la
+   afinidad se calcula con los generos declarados aqui: dos temas de
+   cada artista elegido y cuatro de artistas que comparten genero.
    ============================================================= */
-var CLAVE = 'artist_finder_users';
+var CATALOGO = [
+  { n:'Coldplay',        g:['rock','pop'],      t:[['Yellow','4:29'],['Fix You','4:55'],['Viva La Vida','4:02'],['The Scientist','5:09'],['Clocks','5:07']] },
+  { n:'Arctic Monkeys',  g:['rock','indie'],    t:[['Do I Wanna Know?','4:32'],['505','4:13'],['R U Mine?','3:21'],['Why\'d You Only Call Me When You\'re High?','2:41']] },
+  { n:'Radiohead',       g:['rock','indie'],    t:[['Creep','3:58'],['Karma Police','4:24'],['No Surprises','3:48'],['Paranoid Android','6:23']] },
+  { n:'Tame Impala',     g:['indie','pop'],     t:[['The Less I Know The Better','3:38'],['Let It Happen','7:46'],['Borderline','3:57']] },
+  { n:'Bad Bunny',       g:['reggaeton','latin'], t:[['Titi Me Pregunto','4:03'],['Me Porto Bonito','2:58'],['Callaita','4:10'],['Yonaguni','3:26'],['Dakiti','3:25']] },
+  { n:'KAROL G',         g:['reggaeton','latin'], t:[['Provenza','3:30'],['TQG','3:19'],['Bichota','3:03'],['Mananas Sera Bonito','3:05']] },
+  { n:'Feid',            g:['reggaeton','latin'], t:[['Normal','3:14'],['Classy 101','3:14'],['Ferxxo 100','3:24']] },
+  { n:'Shakira',         g:['latin','pop'],     t:[['Hips Don\'t Lie','3:38'],['Whenever, Wherever','3:16'],['La Tortura','3:32'],['Ojos Asi','3:59']] },
+  { n:'Juanes',          g:['latin','rock'],    t:[['A Dios Le Pido','3:24'],['La Camisa Negra','3:36'],['Es Por Ti','4:05']] },
+  { n:'Carlos Vives',    g:['latin'],           t:[['La Gota Fria','4:32'],['Fruta Fresca','4:03'],['Volvi a Nacer','3:56']] },
+  { n:'Bomba Estereo',   g:['latin','indie'],   t:[['Soy Yo','3:05'],['To My Love','3:41'],['Fuego','3:33']] },
+  { n:'Rosalia',         g:['latin','pop'],     t:[['Malamente','2:30'],['Despecha','2:38'],['Con Altura','2:41'],['Bizcochito','2:03']] },
+  { n:'Taylor Swift',    g:['pop'],             t:[['Anti-Hero','3:20'],['Blank Space','3:51'],['Cruel Summer','2:58'],['Love Story','3:55']] },
+  { n:'Dua Lipa',        g:['pop'],             t:[['Levitating','3:23'],['Don\'t Start Now','3:03'],['New Rules','3:29'],['Physical','3:13']] },
+  { n:'The Weeknd',      g:['pop','rnb'],       t:[['Blinding Lights','3:20'],['Save Your Tears','3:35'],['Starboy','3:50'],['Die For You','4:20']] },
+  { n:'Billie Eilish',   g:['pop','indie'],     t:[['bad guy','3:14'],['Happier Than Ever','4:58'],['lovely','3:20'],['everything i wanted','4:05']] }
+];
+
+var CLAVE = 'artist_finder_v2';
 function $(s){ return document.querySelector(s); }
-var log = $('#log');
+function $$(s){ return [].slice.call(document.querySelectorAll(s)); }
+
+var estado = { personas: cargar(), activa: null, elegidos: [] };
 
 function cargar(){
-  var raw = localStorage.getItem(CLAVE);
-  if (raw) { try { return JSON.parse(raw); } catch (e) {} }
-  return [{ id: 1, name: 'Andrea', email: 'andrea@ejemplo.com', artists: ['Coldplay'] }];
+  try { var r = JSON.parse(localStorage.getItem(CLAVE)); if (r && r.length) return r; } catch(e){}
+  return [{ id:1, name:'Andrea', email:'andrea@ejemplo.com', artists:[], playlist:null }];
 }
-function guardar(u){ localStorage.setItem(CLAVE, JSON.stringify(u)); }
+function guardar(){ localStorage.setItem(CLAVE, JSON.stringify(estado.personas)); }
 
-function esc(s){
-  return String(s).replace(/[<>&"]/g, function(c){
-    return { '<':'&lt;', '>':'&gt;', '&':'&amp;', '"':'&quot;' }[c];
-  });
-}
+function esc(s){ return String(s).replace(/[<>&"]/g, function(c){
+  return {'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]; }); }
 
-function anotar(metodo, ruta, estado, cuerpo){
-  var hora = new Date().toLocaleTimeString('es-CO', { hour12: false });
-  var clase = estado < 300 ? 'ok' : 'er';
+function anotar(metodo, ruta, estadoHttp, extra){
+  var log = $('#log'); if (!log) return;
   var d = document.createElement('div');
-  d.innerHTML = '<span class="t">' + hora + '</span> <span class="m">' + metodo + '</span> ' +
-    esc(ruta) + ' <span class="' + clase + '">' + estado + '</span>' +
-    (cuerpo ? ' <span class="t">' + esc(cuerpo) + '</span>' : '');
+  d.innerHTML = '<span class="t">' + new Date().toLocaleTimeString('es-CO',{hour12:false}) + '</span> ' +
+    '<span class="m">' + metodo + '</span> ' + esc(ruta) +
+    ' <span class="ok">' + estadoHttp + '</span>' + (extra ? ' <span class="t">' + esc(extra) + '</span>' : '');
   log.insertBefore(d, log.firstChild);
 }
 
-function pintar(){
-  var users = cargar();
-  var ul = $('#lista');
-  if (!users.length) {
-    ul.innerHTML = '<li class="empty">No hay usuarios. Crea uno arriba.</li>';
-    return;
-  }
-  ul.innerHTML = users.map(function(u){
-    var artistas = u.artists.length
-      ? u.artists.map(function(a, i){
-          return '<span class="artist">' + esc(a) +
-                 '<b data-del-artist="' + u.id + ':' + i + '" title="Quitar">&times;</b></span>';
-        }).join('')
-      : '<span class="user-mail" style="margin:0">Sin artistas todavia</span>';
-    return '<li class="user">' +
-      '<div class="user-top"><span class="user-name">' + esc(u.name) + '</span>' +
-      '<span class="user-id">id: ' + u.id + '</span></div>' +
-      '<div class="user-mail">' + esc(u.email) + '</div>' +
-      '<div class="artists">' + artistas + '</div>' +
-      '<div class="user-actions">' +
-        '<button class="b-ghost b-mini" data-add="' + u.id + '">+ Artista</button>' +
-        '<button class="b-ghost b-mini" data-edit="' + u.id + '">Editar</button>' +
-        '<button class="b-danger b-mini" data-del="' + u.id + '">Borrar</button>' +
-      '</div></li>';
+/* ---------- Paso 1 ---------- */
+function pintarPersonas(){
+  $('#personas').innerHTML = estado.personas.map(function(p){
+    return '<span class="persona' + (estado.activa === p.id ? ' sel' : '') + '" data-p="' + p.id + '">' +
+           esc(p.name) + '<x data-x="' + p.id + '" title="Eliminar">&times;</x></span>';
   }).join('');
 }
 
 $('#crear').onclick = function(){
   var name = $('#n-name').value.trim();
-  var email = $('#n-mail').value.trim();
-  if (!name || !email) {
-    anotar('POST', '/users', 400, '{"error":"Faltan campos obligatorios"}');
-    return;
-  }
-  var users = cargar();
-  var ids = users.map(function(u){ return u.id; });
-  var nuevo = { id: ids.length ? Math.max.apply(null, ids) + 1 : 1, name: name, email: email, artists: [] };
-  users.push(nuevo);
-  guardar(users);
-  anotar('POST', '/users', 201, '{"user":{"id":' + nuevo.id + '}}');
-  $('#n-name').value = '';
-  $('#n-mail').value = '';
-  pintar();
+  if (!name) { anotar('POST','/users',400,'{"error":"Faltan campos obligatorios"}'); return; }
+  var ids = estado.personas.map(function(p){ return p.id; });
+  var nueva = { id: ids.length ? Math.max.apply(null, ids) + 1 : 1,
+                name: name, email: $('#n-mail').value.trim() || name.toLowerCase().replace(/\s+/g,'') + '@ejemplo.com',
+                artists: [], playlist: null };
+  estado.personas.push(nueva);
+  guardar();
+  anotar('POST','/users',201,'{"user":{"id":' + nueva.id + '}}');
+  $('#n-name').value = ''; $('#n-mail').value = '';
+  seleccionar(nueva.id);
 };
 
-$('#lista').onclick = function(e){
-  var t = e.target;
-  var users = cargar();
-  var u;
-
-  if (t.dataset.del) {
-    var idD = +t.dataset.del;
-    guardar(users.filter(function(x){ return x.id !== idD; }));
-    anotar('DELETE', '/users/' + idD, 200, '{"message":"Usuario eliminado con exito"}');
-    return pintar();
+$('#personas').onclick = function(e){
+  if (e.target.dataset.x) {
+    var idx = +e.target.dataset.x;
+    estado.personas = estado.personas.filter(function(p){ return p.id !== idx; });
+    if (estado.activa === idx) { estado.activa = null; estado.elegidos = []; }
+    guardar();
+    anotar('DELETE','/users/' + idx, 200, '{"message":"Usuario eliminado con exito"}');
+    return refrescar();
   }
-  if (t.dataset.edit) {
-    var idE = +t.dataset.edit;
-    u = users.filter(function(x){ return x.id === idE; })[0];
-    var nombre = prompt('Nuevo nombre', u.name);
-    if (nombre === null) return;
-    if (nombre.trim()) u.name = nombre.trim();
-    guardar(users);
-    anotar('PUT', '/users/' + idE, 200, '{"message":"Usuario actualizado con exito"}');
-    return pintar();
-  }
-  if (t.dataset.add) {
-    var idA = +t.dataset.add;
-    var artista = prompt('Nombre del artista');
-    if (!artista || !artista.trim()) {
-      if (artista !== null) anotar('POST', '/users/' + idA + '/artists', 400, '{"error":"Falta el nombre del artista"}');
-      return;
-    }
-    u = users.filter(function(x){ return x.id === idA; })[0];
-    u.artists.push(artista.trim());
-    guardar(users);
-    anotar('POST', '/users/' + idA + '/artists', 201, '{"artists":' + u.artists.length + '}');
-    return pintar();
-  }
-  if (t.dataset.delArtist) {
-    var partes = t.dataset.delArtist.split(':');
-    u = users.filter(function(x){ return x.id === +partes[0]; })[0];
-    u.artists.splice(+partes[1], 1);
-    guardar(users);
-    anotar('PUT', '/users/' + partes[0], 200, '{"message":"Artista quitado"}');
-    return pintar();
+  if (e.target.dataset.p || (e.target.parentElement && e.target.parentElement.dataset.p)) {
+    seleccionar(+(e.target.dataset.p || e.target.parentElement.dataset.p));
   }
 };
 
-/* Spotify: sin backend no hay token, asi que se muestran respuestas de
-   ejemplo con la forma exacta del endpoint real. Se etiquetan como
-   ejemplo: no se hacen pasar por una consulta en vivo. */
-var EJEMPLOS = {
-  'coldplay':     { name:'Coldplay',     genres:['permanent wave','pop'],    followers:48250119,  popularity:89 },
-  'bad bunny':    { name:'Bad Bunny',    genres:['reggaeton','trap latino'], followers:84120553,  popularity:96 },
-  'taylor swift': { name:'Taylor Swift', genres:['pop'],                     followers:132400000, popularity:100 },
-  'karol g':      { name:'KAROL G',      genres:['reggaeton colombiano'],    followers:65300000,  popularity:94 }
-};
+function seleccionar(id){
+  estado.activa = id;
+  var p = persona();
+  estado.elegidos = (p && p.artists) ? p.artists.slice(0,3) : [];
+  anotar('GET','/users/' + id, 200, '{"artists":' + estado.elegidos.length + '}');
+  refrescar();
+  if (p && p.playlist) mostrarPlaylist(p.playlist, p.name); else ocultarPlaylist();
+}
+function persona(){
+  return estado.personas.filter(function(p){ return p.id === estado.activa; })[0] || null;
+}
 
-$('#buscar').onclick = function(){
-  var q = $('#q').value.trim().toLowerCase();
-  var res = $('#res');
-  if (!q) return;
+/* ---------- Paso 2 ---------- */
+function pintarArtistas(){
+  var lleno = estado.elegidos.length >= 3;
+  $('#artistas').innerHTML = CATALOGO.map(function(a){
+    var sel = estado.elegidos.indexOf(a.n) !== -1;
+    return '<button class="art' + (sel ? ' sel' : '') + (lleno && !sel ? ' lleno' : '') + '" data-a="' + esc(a.n) + '">' +
+           '<span class="art-n">' + esc(a.n) + '</span>' +
+           '<span class="art-g">' + a.g[0] + '</span></button>';
+  }).join('');
 
-  var d = EJEMPLOS[q];
-  if (!d) {
-    anotar('GET', '/spotify/artist/' + q, 503, 'requiere el backend en marcha');
-    res.className = 'result on';
-    res.innerHTML = '<p class="res-sub">Este endpoint consulta la Spotify Web API y necesita el ' +
-      'servidor Flask encendido: el <code>client_secret</code> no puede viajar al navegador.' +
-      '<br><br>Prueba con <b>coldplay</b>, <b>bad bunny</b>, <b>karol g</b> o <b>taylor swift</b> ' +
-      'para ver la forma exacta de la respuesta.</p>';
-    return;
+  $('#cuenta').textContent = estado.elegidos.length + ' de 3';
+  $$('.punto').forEach(function(d,i){ d.classList.toggle('on', i < estado.elegidos.length); });
+  $('#armar').disabled = estado.elegidos.length !== 3;
+}
+
+$('#artistas').onclick = function(e){
+  var btn = e.target.closest ? e.target.closest('.art') : null;
+  if (!btn) return;
+  var nombre = btn.dataset.a;
+  var i = estado.elegidos.indexOf(nombre);
+  if (i !== -1) {
+    estado.elegidos.splice(i,1);
+    anotar('PUT','/users/' + estado.activa, 200, '{"message":"Artista quitado"}');
+  } else {
+    if (estado.elegidos.length >= 3) return;
+    estado.elegidos.push(nombre);
+    anotar('POST','/users/' + estado.activa + '/artists', 201, '{"artists":' + estado.elegidos.length + '}');
   }
-
-  anotar('GET', '/spotify/artist/' + q, 200, 'respuesta de ejemplo');
-  res.className = 'result on';
-  res.innerHTML =
-    '<div class="res-top">' +
-      '<div>' +
-        '<div class="res-name">' + esc(d.name) + '</div>' +
-        '<div class="res-sub">Respuesta de ejemplo con la forma real del endpoint</div>' +
-      '</div>' +
-    '</div>' +
-    '<div class="stats">' +
-      '<div class="stat"><b>' + d.followers.toLocaleString('es-CO') + '</b><span>Seguidores</span></div>' +
-      '<div class="stat"><b>' + d.popularity + '/100</b><span>Popularidad</span></div>' +
-    '</div>' +
-    '<div class="genres">' + d.genres.map(function(g){ return '<span class="chip">' + esc(g) + '</span>'; }).join('') + '</div>';
+  var p = persona();
+  if (p) { p.artists = estado.elegidos.slice(); guardar(); }
+  pintarArtistas();
 };
 
-$('#q').addEventListener('keydown', function(e){ if (e.key === 'Enter') $('#buscar').click(); });
-$('#n-mail').addEventListener('keydown', function(e){ if (e.key === 'Enter') $('#crear').click(); });
+$('#limpiar').onclick = function(){
+  estado.elegidos = [];
+  var p = persona();
+  if (p) { p.artists = []; p.playlist = null; guardar(); }
+  ocultarPlaylist();
+  pintarArtistas();
+};
 
-anotar('GET', '/users', 200, 'estado inicial cargado');
-pintar();
+/* ---------- Paso 3: armar la playlist ---------- */
+function armarPlaylist(nombres){
+  var elegidos = CATALOGO.filter(function(a){ return nombres.indexOf(a.n) !== -1; });
+  var lista = [];
+
+  // 2 temas de cada artista elegido (6 en total)
+  elegidos.forEach(function(a){
+    barajar(a.t.slice()).slice(0,2).forEach(function(t){
+      lista.push({ titulo:t[0], artista:a.n, dur:t[1], base:true });
+    });
+  });
+
+  // generos que aparecen en la seleccion
+  var generos = {};
+  elegidos.forEach(function(a){ a.g.forEach(function(g){ generos[g] = true; }); });
+
+  // 4 temas de artistas afines que no esten ya elegidos
+  var afines = CATALOGO.filter(function(a){
+    return nombres.indexOf(a.n) === -1 && a.g.some(function(g){ return generos[g]; });
+  });
+  var extras = [];
+  barajar(afines).forEach(function(a){
+    var t = barajar(a.t.slice())[0];
+    extras.push({ titulo:t[0], artista:a.n, dur:t[1], base:false });
+  });
+
+  return barajar(lista).concat(extras.slice(0,4));
+}
+
+function barajar(a){
+  for (var i = a.length - 1; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1));
+    var tmp = a[i]; a[i] = a[j]; a[j] = tmp;
+  }
+  return a;
+}
+
+$('#armar').onclick = function(){
+  var p = persona(); if (!p) return;
+  estado.elegidos.forEach(function(n){
+    anotar('GET','/spotify/artist/' + n.toLowerCase(), 200, 'afinidad por genero');
+  });
+  var pl = armarPlaylist(estado.elegidos);
+  p.playlist = pl; p.artists = estado.elegidos.slice(); guardar();
+  mostrarPlaylist(pl, p.name);
+  $('#p3').scrollIntoView({ behavior:'smooth', block:'start' });
+};
+
+function mostrarPlaylist(pl, nombre){
+  var total = pl.reduce(function(acc,t){
+    var m = t.dur.split(':'); return acc + (+m[0]) * 60 + (+m[1]);
+  }, 0);
+  var mins = Math.round(total / 60);
+
+  $('#p3sub').textContent = 'Diez canciones a partir de lo que elegiste.';
+  $('#playlist').className = 'playlist on';
+  $('#playlist').innerHTML =
+    '<div class="pl-top"><span class="pl-para">Para ' + esc(nombre) + '</span>' +
+    '<span class="pl-meta">10 temas · ' + mins + ' min</span></div>' +
+    pl.map(function(t,i){
+      return '<div class="tema' + (t.base ? ' base' : '') + '" style="animation-delay:' + (i * 55) + 'ms">' +
+        '<span class="tema-n">' + (i + 1) + '</span>' +
+        '<span class="tema-i"><span class="tema-t">' + esc(t.titulo) + '</span>' +
+        '<span class="tema-a">' + esc(t.artista) + '</span></span>' +
+        '<span class="tema-d">' + t.dur + '</span></div>';
+    }).join('') +
+    '<p class="leyenda">Las marcadas con <i></i> son de los artistas que elegiste. ' +
+    'El resto son de artistas que comparten género con ellos.</p>';
+  $('#p3').classList.remove('off');
+  $('#p3').classList.add('hecho');
+}
+
+function ocultarPlaylist(){
+  $('#playlist').className = 'playlist';
+  $('#p3sub').textContent = 'Aparecerá aquí cuando elijas tus 3 artistas.';
+  $('#p3').classList.remove('hecho');
+}
+
+/* ---------- Refresco general ---------- */
+function refrescar(){
+  pintarPersonas();
+  pintarArtistas();
+  var hayPersona = !!persona();
+  $('#p1').classList.toggle('hecho', hayPersona);
+  $('#p2').classList.toggle('off', !hayPersona);
+  $('#p2').classList.toggle('hecho', estado.elegidos.length === 3);
+  $('#p3').classList.toggle('off', !(persona() && persona().playlist));
+}
+
+/* ---------- Notas musicales ---------- */
+(function(){
+  var cont = $('#notas');
+  var glifos = ['♪','♫','♬','♩'];
+  for (var i = 0; i < 14; i++) {
+    var n = document.createElement('span');
+    n.className = 'nota';
+    n.textContent = glifos[i % glifos.length];
+    n.style.left = (Math.random() * 100) + '%';
+    n.style.fontSize = (14 + Math.random() * 18) + 'px';
+    n.style.animationDuration = (16 + Math.random() * 14) + 's';
+    n.style.animationDelay = (-Math.random() * 26) + 's';
+    cont.appendChild(n);
+  }
+})();
+
+$('#n-name').addEventListener('keydown', function(e){ if (e.key === 'Enter') $('#crear').click(); });
+
+anotar('GET','/users',200,'estado inicial cargado');
+seleccionar(estado.personas[0].id);
 </script>
 </body>
 </html>
