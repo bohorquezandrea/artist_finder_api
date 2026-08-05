@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#10231C">
-<meta name="description" content="Artist Finder API: REST en Flask con integracion a Spotify. Referencia de endpoints. Proyecto de Andrea Bohorquez.">
-<title>Artist Finder API · Andrea Bohorquez</title>
+<meta name="description" content="Artist Finder: gestiona usuarios y sus artistas favoritos. Cliente de la API REST en Flask de Andrea Bohorquez.">
+<title>Artist Finder · Andrea Bohorquez</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -13,45 +13,92 @@
 :root{
   --bg:#10231C; --surface:#163026; --surface-2:#1B3B2F; --line:#22453A;
   --ink:#F5EEE0; --ink-soft:#C3D6CC; --ink-muted:#8FA89C;
-  --accent:#C9B8F5; --warm:#EDBEB0;
-  --get:#8FCB7A; --post:#7CA8E8; --put:#F2D06B; --del:#E8897C;
-  --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  --accent:#C9B8F5; --warm:#EDBEB0; --danger:#E8897C; --ok:#8FCB7A;
+  --mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+  --ease:cubic-bezier(.22,1,.36,1);
 }
-*{box-sizing:border-box}
-body{margin:0;padding:0 20px 80px;background:var(--bg);color:var(--ink);
-  font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;line-height:1.6}
-.wrap{max-width:920px;margin:0 auto}
-.eyebrow{font-size:11px;font-weight:600;letter-spacing:.3em;text-transform:uppercase;color:var(--ink-muted);margin:0 0 14px}
-header{padding:56px 0 8px}
-h1{margin:0 0 14px;font-size:clamp(34px,6vw,58px);font-weight:700;letter-spacing:-.03em;line-height:1}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:'Inter',-apple-system,sans-serif;
+  line-height:1.6;padding:0 20px 80px}
+.wrap{max-width:1060px;margin:0 auto}
+.eyebrow{font-size:11px;font-weight:600;letter-spacing:.3em;text-transform:uppercase;color:var(--ink-muted);margin-bottom:14px}
+header{padding:56px 0 34px}
+h1{font-size:clamp(34px,6vw,58px);font-weight:700;letter-spacing:-.03em;line-height:1;margin-bottom:16px}
 h1 em{font-style:normal;color:var(--accent)}
-.lede{margin:0 0 24px;max-width:60ch;color:var(--ink-soft)}
-.stack{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
-.chip{font-size:11px;letter-spacing:.04em;padding:5px 11px;border:1px solid var(--line);
-  border-radius:999px;color:var(--ink-muted)}
-.note{margin:32px 0 0;padding:18px 20px;background:var(--surface);
-  border:1px solid var(--line);border-left:3px solid var(--warm);border-radius:10px;
-  font-size:14px;color:var(--ink-soft)}
+.lede{max-width:62ch;color:var(--ink-soft);margin-bottom:22px}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{font-size:11px;padding:5px 11px;border:1px solid var(--line);border-radius:999px;color:var(--ink-muted)}
+
+.cols{display:grid;gap:22px;grid-template-columns:1fr}
+@media(min-width:900px){.cols{grid-template-columns:1fr 1fr;align-items:start}}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:26px 24px;margin-bottom:22px}
+.panel h2{font-size:13px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:var(--warm);margin-bottom:6px}
+.panel .hint{font-family:var(--mono);font-size:12px;color:var(--ink-muted);margin-bottom:20px}
+
+input{width:100%;padding:12px 15px;font:inherit;font-size:14px;color:var(--ink);
+  background:var(--bg);border:1px solid var(--line);border-radius:10px;margin-bottom:14px;
+  transition:border-color .25s var(--ease)}
+input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(201,184,245,.16)}
+input::placeholder{color:var(--ink-muted)}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.row input{flex:1 1 150px}
+
+button{font:inherit;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
+  padding:12px 20px;border:1px solid transparent;border-radius:999px;cursor:pointer;
+  transition:transform .25s var(--ease)}
+button:hover{transform:translateY(-2px)}
+button:active{transform:none}
+.b-main{background:var(--accent);color:#10231C}
+.b-ghost{background:transparent;border-color:var(--line);color:var(--ink)}
+.b-ghost:hover{border-color:var(--accent);color:var(--accent)}
+.b-mini{padding:7px 13px;font-size:10px}
+.b-danger{background:transparent;border-color:var(--line);color:var(--danger)}
+.b-danger:hover{border-color:var(--danger)}
+
+.users{list-style:none;display:grid;gap:12px}
+.user{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+.user-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:4px}
+.user-name{font-size:16px;font-weight:600;letter-spacing:-.01em}
+.user-id{font-family:var(--mono);font-size:11px;color:var(--accent);white-space:nowrap}
+.user-mail{font-size:13px;color:var(--ink-muted);margin-bottom:12px;word-break:break-all}
+.artists{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.artist{font-size:11px;padding:4px 10px;border-radius:999px;background:var(--surface-2);color:var(--ink-soft);
+  display:inline-flex;align-items:center;gap:8px}
+.artist b{cursor:pointer;color:var(--ink-muted);font-weight:400;font-size:13px;line-height:1}
+.artist b:hover{color:var(--danger)}
+.user-actions{display:flex;gap:8px;flex-wrap:wrap;padding-top:12px;border-top:1px solid var(--line)}
+.empty{color:var(--ink-muted);font-size:14px;text-align:center;padding:26px 0}
+
+.log{font-family:var(--mono);font-size:12px;line-height:1.7;background:#0B1913;border:1px solid var(--line);
+  border-radius:12px;padding:16px 18px;max-height:300px;overflow-y:auto}
+.log div{margin-bottom:5px;word-break:break-all}
+.log .m{color:var(--accent);font-weight:500}
+.log .ok{color:var(--ok)}
+.log .er{color:var(--danger)}
+.log .t{color:var(--ink-muted)}
+
+.note{padding:16px 18px;background:var(--surface);border:1px solid var(--line);
+  border-left:3px solid var(--warm);border-radius:10px;font-size:13.5px;color:var(--ink-soft);margin-bottom:22px}
 .note b{color:var(--ink)}
-h2{margin:56px 0 6px;font-size:13px;font-weight:600;letter-spacing:.2em;
-  text-transform:uppercase;color:var(--warm)}
-.h2sub{margin:0 0 20px;font-size:14px;color:var(--ink-muted)}
-.ep{margin-bottom:14px;background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
-.ep-head{display:flex;align-items:center;gap:12px;padding:14px 18px;flex-wrap:wrap}
-.verb{font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.06em;
-  padding:4px 9px;border-radius:6px;color:#10231C;min-width:60px;text-align:center}
-.get{background:var(--get)} .post{background:var(--post)}
-.put{background:var(--put)} .del{background:var(--del)}
-.path{font-family:var(--mono);font-size:14px;color:var(--ink)}
-.path span{color:var(--accent)}
-.desc{font-size:13px;color:var(--ink-muted);flex:1 1 100%;margin:0}
-pre{margin:0;padding:16px 18px;background:#0B1913;border-top:1px solid var(--line);
-  overflow-x:auto;font-family:var(--mono);font-size:12.5px;line-height:1.6;color:var(--ink-soft)}
-.k{color:var(--accent)} .s{color:var(--warm)} .n{color:var(--get)}
-footer{margin-top:64px;padding-top:24px;border-top:1px solid var(--line);
+code{font-family:var(--mono);font-size:.9em;background:var(--surface-2);padding:2px 6px;border-radius:5px}
+
+.result{margin-top:16px;padding:18px;background:var(--bg);border:1px solid var(--line);border-radius:12px;display:none}
+.result.on{display:block}
+.res-top{display:flex;gap:16px;align-items:center;margin-bottom:14px}
+.res-top img{width:76px;height:76px;border-radius:12px;object-fit:cover;flex:none;background:var(--surface-2)}
+.res-name{font-size:19px;font-weight:600;letter-spacing:-.01em}
+.res-sub{font-size:12.5px;color:var(--ink-muted)}
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.stat{background:var(--surface);border-radius:10px;padding:12px 14px}
+.stat b{display:block;font-size:18px;font-weight:600;color:var(--warm)}
+.stat span{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-muted)}
+.genres{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
+
+footer{margin-top:56px;padding-top:24px;border-top:1px solid var(--line);
   display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--ink-muted)}
 a{color:var(--accent)}
-code{font-family:var(--mono);font-size:.92em;background:var(--surface-2);padding:2px 6px;border-radius:5px}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
 <body>
@@ -59,127 +106,67 @@ code{font-family:var(--mono);font-size:.92em;background:var(--surface-2);padding
 
 <header>
   <p class="eyebrow">Python · Flask · Spotify Web API</p>
-  <h1>Artist Finder <em>API</em></h1>
+  <h1>Artist <em>Finder</em></h1>
   <p class="lede">
-    API REST que gestiona usuarios y sus artistas favoritos, y consulta
-    informacion real de artistas y canciones contra la Spotify Web API.
-    Nueve endpoints, persistencia en JSON y autenticacion por client
-    credentials contra Spotify.
+    Cliente de la API REST que gestiona usuarios y sus artistas favoritos.
+    Los endpoints del backend en Flask, funcionando aqui contra el
+    almacenamiento del navegador para que se puedan probar sin instalar nada.
   </p>
-  <div class="stack">
+  <div class="chips">
     <span class="chip">Python</span><span class="chip">Flask</span>
     <span class="chip">REST</span><span class="chip">Spotify Web API</span>
-    <span class="chip">OAuth client credentials</span><span class="chip">JSON</span>
+    <span class="chip">OAuth client credentials</span>
   </div>
 </header>
 
 <div class="note">
-  <b>Esta pagina es la referencia, no la API corriendo.</b> GitHub Pages
-  solo sirve archivos estaticos: no puede ejecutar Python. Para probarla de
-  verdad, clona el repositorio y levantala en local con
-  <code>flask run</code>, o desplegala en un servicio que ejecute Python.
-  Las credenciales de Spotify van en un <code>.env</code> y nunca se
-  publican.
+  <b>Como funciona esta pagina.</b> GitHub Pages solo sirve archivos
+  estaticos, asi que no puede ejecutar Python. Esta version replica la
+  logica de la API contra <code>localStorage</code>: crear, listar,
+  editar y borrar usuarios funciona de verdad, y cada accion queda
+  registrada abajo con el metodo y la ruta que usaria el backend.
+  Consultar Spotify si necesita el servidor, porque el
+  <code>client_secret</code> nunca puede viajar al navegador.
 </div>
 
-<h2>Usuarios</h2>
-<p class="h2sub">CRUD completo sobre <code>users.json</code>.</p>
+<div class="cols">
 
-<div class="ep">
-  <div class="ep-head"><span class="verb post">POST</span><span class="path">/users</span>
-    <p class="desc">Crea un usuario. Devuelve 400 si falta <code>name</code> o <code>email</code>.</p></div>
-<pre><span class="k">// peticion</span>
-{ <span class="k">"name"</span>: <span class="s">"Juan Carlos"</span>, <span class="k">"email"</span>: <span class="s">"jc@example.com"</span> }
+  <div>
+    <div class="panel">
+      <h2>Crear usuario</h2>
+      <p class="hint">POST /users</p>
+      <div class="row">
+        <input id="n-name" placeholder="Nombre" autocomplete="off">
+        <input id="n-mail" placeholder="correo@ejemplo.com" autocomplete="off">
+      </div>
+      <button class="b-main" id="crear">Crear usuario</button>
+    </div>
 
-<span class="k">// 201 Created</span>
-{ <span class="k">"message"</span>: <span class="s">"Usuario creado con éxito"</span>,
-  <span class="k">"user"</span>: { <span class="k">"id"</span>: <span class="n">1</span>, <span class="k">"name"</span>: <span class="s">"Juan Carlos"</span>,
-            <span class="k">"email"</span>: <span class="s">"jc@example.com"</span>, <span class="k">"artists"</span>: [] } }</pre>
-</div>
+    <div class="panel">
+      <h2>Usuarios</h2>
+      <p class="hint">GET /users</p>
+      <ul class="users" id="lista"></ul>
+    </div>
+  </div>
 
-<div class="ep">
-  <div class="ep-head"><span class="verb get">GET</span><span class="path">/users</span>
-    <p class="desc">Lista todos los usuarios registrados.</p></div>
-<pre><span class="k">// 200 OK</span>
-[ { <span class="k">"id"</span>: <span class="n">1</span>, <span class="k">"name"</span>: <span class="s">"Juan Carlos"</span>,
-    <span class="k">"email"</span>: <span class="s">"jc@example.com"</span>, <span class="k">"artists"</span>: [<span class="s">"Coldplay"</span>] } ]</pre>
-</div>
+  <div>
+    <div class="panel">
+      <h2>Buscar en Spotify</h2>
+      <p class="hint">GET /spotify/artist/&lt;nombre&gt;</p>
+      <div class="row">
+        <input id="q" placeholder="coldplay" autocomplete="off">
+        <button class="b-main" id="buscar">Buscar</button>
+      </div>
+      <div class="result" id="res"></div>
+    </div>
 
-<div class="ep">
-  <div class="ep-head"><span class="verb get">GET</span><span class="path">/users/<span>&lt;id&gt;</span></span>
-    <p class="desc">Un usuario por id. 404 si no existe.</p></div>
-</div>
+    <div class="panel">
+      <h2>Registro de peticiones</h2>
+      <p class="hint">Metodo y ruta equivalentes en el backend</p>
+      <div class="log" id="log"></div>
+    </div>
+  </div>
 
-<div class="ep">
-  <div class="ep-head"><span class="verb put">PUT</span><span class="path">/users/<span>&lt;id&gt;</span></span>
-    <p class="desc">Actualiza nombre o email. Los campos son opcionales.</p></div>
-<pre><span class="k">// peticion</span>
-{ <span class="k">"name"</span>: <span class="s">"Juan C. Perez"</span> }</pre>
-</div>
-
-<div class="ep">
-  <div class="ep-head"><span class="verb del">DELETE</span><span class="path">/users/<span>&lt;id&gt;</span></span>
-    <p class="desc">Elimina el usuario y persiste el cambio.</p></div>
-</div>
-
-<h2>Artistas favoritos</h2>
-<p class="h2sub">Lista de artistas asociada a cada usuario.</p>
-
-<div class="ep">
-  <div class="ep-head"><span class="verb post">POST</span><span class="path">/users/<span>&lt;id&gt;</span>/artists</span>
-    <p class="desc">Anade un artista a los favoritos del usuario.</p></div>
-<pre><span class="k">// peticion</span>
-{ <span class="k">"artist_name"</span>: <span class="s">"Coldplay"</span> }
-
-<span class="k">// 201 Created</span>
-{ <span class="k">"message"</span>: <span class="s">"Artista agregado con éxito"</span>,
-  <span class="k">"artists"</span>: [<span class="s">"Coldplay"</span>] }</pre>
-</div>
-
-<div class="ep">
-  <div class="ep-head"><span class="verb get">GET</span><span class="path">/users/<span>&lt;id&gt;</span>/artists</span>
-    <p class="desc">Devuelve los favoritos de ese usuario.</p></div>
-</div>
-
-<h2>Spotify</h2>
-<p class="h2sub">Consulta en vivo contra la Spotify Web API. El token se pide con client credentials en cada llamada.</p>
-
-<div class="ep">
-  <div class="ep-head"><span class="verb get">GET</span><span class="path">/spotify/artist/<span>&lt;nombre&gt;</span></span>
-    <p class="desc">Busca un artista y devuelve generos, seguidores y popularidad.</p></div>
-<pre><span class="k">// 200 OK</span>
-{ <span class="k">"name"</span>: <span class="s">"Coldplay"</span>,
-  <span class="k">"genres"</span>: [<span class="s">"permanent wave"</span>, <span class="s">"pop"</span>],
-  <span class="k">"followers"</span>: <span class="n">48250119</span>,
-  <span class="k">"popularity"</span>: <span class="n">89</span>,
-  <span class="k">"url"</span>: <span class="s">"https://open.spotify.com/artist/..."</span>,
-  <span class="k">"image"</span>: <span class="s">"https://i.scdn.co/image/..."</span> }</pre>
-</div>
-
-<div class="ep">
-  <div class="ep-head"><span class="verb get">GET</span><span class="path">/spotify/song/<span>&lt;nombre&gt;</span></span>
-    <p class="desc">Busca una cancion: album, fecha de lanzamiento, duracion y popularidad.</p></div>
-<pre><span class="k">// 200 OK</span>
-{ <span class="k">"name"</span>: <span class="s">"Yellow"</span>,
-  <span class="k">"artist"</span>: <span class="s">"Coldplay"</span>,
-  <span class="k">"album"</span>: <span class="s">"Parachutes"</span>,
-  <span class="k">"release_date"</span>: <span class="s">"2000-07-10"</span>,
-  <span class="k">"duration_ms"</span>: <span class="n">266773</span>,
-  <span class="k">"popularity"</span>: <span class="n">88</span> }</pre>
-</div>
-
-<h2>Levantarla en local</h2>
-<p class="h2sub">Necesitas credenciales de una app de Spotify for Developers.</p>
-<div class="ep">
-<pre>git clone https://github.com/bohorquezandrea/artist_finder_api.git
-cd artist_finder_api
-pip install -r requirements.txt
-
-<span class="k"># crea un .env con tus credenciales</span>
-echo <span class="s">"SPOTIFY_CLIENT_ID=tu_id"</span> &gt;&gt; .env
-echo <span class="s">"SPOTIFY_CLIENT_SECRET=tu_secreto"</span> &gt;&gt; .env
-
-python app.py   <span class="k"># http://127.0.0.1:5000</span></pre>
 </div>
 
 <footer>
@@ -188,5 +175,178 @@ python app.py   <span class="k"># http://127.0.0.1:5000</span></pre>
 </footer>
 
 </div>
+
+<script>
+/* =============================================================
+   Replica en cliente de la API de Flask.
+
+   Cada accion escribe en localStorage y deja constancia del metodo, la
+   ruta y el codigo de estado equivalentes del backend: mismas
+   validaciones y misma forma de respuesta.
+   ============================================================= */
+var CLAVE = 'artist_finder_users';
+function $(s){ return document.querySelector(s); }
+var log = $('#log');
+
+function cargar(){
+  var raw = localStorage.getItem(CLAVE);
+  if (raw) { try { return JSON.parse(raw); } catch (e) {} }
+  return [{ id: 1, name: 'Juan Carlos', email: 'jc@example.com', artists: ['Coldplay'] }];
+}
+function guardar(u){ localStorage.setItem(CLAVE, JSON.stringify(u)); }
+
+function esc(s){
+  return String(s).replace(/[<>&"]/g, function(c){
+    return { '<':'&lt;', '>':'&gt;', '&':'&amp;', '"':'&quot;' }[c];
+  });
+}
+
+function anotar(metodo, ruta, estado, cuerpo){
+  var hora = new Date().toLocaleTimeString('es-CO', { hour12: false });
+  var clase = estado < 300 ? 'ok' : 'er';
+  var d = document.createElement('div');
+  d.innerHTML = '<span class="t">' + hora + '</span> <span class="m">' + metodo + '</span> ' +
+    esc(ruta) + ' <span class="' + clase + '">' + estado + '</span>' +
+    (cuerpo ? ' <span class="t">' + esc(cuerpo) + '</span>' : '');
+  log.insertBefore(d, log.firstChild);
+}
+
+function pintar(){
+  var users = cargar();
+  var ul = $('#lista');
+  if (!users.length) {
+    ul.innerHTML = '<li class="empty">No hay usuarios. Crea uno arriba.</li>';
+    return;
+  }
+  ul.innerHTML = users.map(function(u){
+    var artistas = u.artists.length
+      ? u.artists.map(function(a, i){
+          return '<span class="artist">' + esc(a) +
+                 '<b data-del-artist="' + u.id + ':' + i + '" title="Quitar">&times;</b></span>';
+        }).join('')
+      : '<span class="user-mail" style="margin:0">Sin artistas todavia</span>';
+    return '<li class="user">' +
+      '<div class="user-top"><span class="user-name">' + esc(u.name) + '</span>' +
+      '<span class="user-id">id: ' + u.id + '</span></div>' +
+      '<div class="user-mail">' + esc(u.email) + '</div>' +
+      '<div class="artists">' + artistas + '</div>' +
+      '<div class="user-actions">' +
+        '<button class="b-ghost b-mini" data-add="' + u.id + '">+ Artista</button>' +
+        '<button class="b-ghost b-mini" data-edit="' + u.id + '">Editar</button>' +
+        '<button class="b-danger b-mini" data-del="' + u.id + '">Borrar</button>' +
+      '</div></li>';
+  }).join('');
+}
+
+$('#crear').onclick = function(){
+  var name = $('#n-name').value.trim();
+  var email = $('#n-mail').value.trim();
+  if (!name || !email) {
+    anotar('POST', '/users', 400, '{"error":"Faltan campos obligatorios"}');
+    return;
+  }
+  var users = cargar();
+  var ids = users.map(function(u){ return u.id; });
+  var nuevo = { id: ids.length ? Math.max.apply(null, ids) + 1 : 1, name: name, email: email, artists: [] };
+  users.push(nuevo);
+  guardar(users);
+  anotar('POST', '/users', 201, '{"user":{"id":' + nuevo.id + '}}');
+  $('#n-name').value = '';
+  $('#n-mail').value = '';
+  pintar();
+};
+
+$('#lista').onclick = function(e){
+  var t = e.target;
+  var users = cargar();
+  var u;
+
+  if (t.dataset.del) {
+    var idD = +t.dataset.del;
+    guardar(users.filter(function(x){ return x.id !== idD; }));
+    anotar('DELETE', '/users/' + idD, 200, '{"message":"Usuario eliminado con exito"}');
+    return pintar();
+  }
+  if (t.dataset.edit) {
+    var idE = +t.dataset.edit;
+    u = users.filter(function(x){ return x.id === idE; })[0];
+    var nombre = prompt('Nuevo nombre', u.name);
+    if (nombre === null) return;
+    if (nombre.trim()) u.name = nombre.trim();
+    guardar(users);
+    anotar('PUT', '/users/' + idE, 200, '{"message":"Usuario actualizado con exito"}');
+    return pintar();
+  }
+  if (t.dataset.add) {
+    var idA = +t.dataset.add;
+    var artista = prompt('Nombre del artista');
+    if (!artista || !artista.trim()) {
+      if (artista !== null) anotar('POST', '/users/' + idA + '/artists', 400, '{"error":"Falta el nombre del artista"}');
+      return;
+    }
+    u = users.filter(function(x){ return x.id === idA; })[0];
+    u.artists.push(artista.trim());
+    guardar(users);
+    anotar('POST', '/users/' + idA + '/artists', 201, '{"artists":' + u.artists.length + '}');
+    return pintar();
+  }
+  if (t.dataset.delArtist) {
+    var partes = t.dataset.delArtist.split(':');
+    u = users.filter(function(x){ return x.id === +partes[0]; })[0];
+    u.artists.splice(+partes[1], 1);
+    guardar(users);
+    anotar('PUT', '/users/' + partes[0], 200, '{"message":"Artista quitado"}');
+    return pintar();
+  }
+};
+
+/* Spotify: sin backend no hay token, asi que se muestran respuestas de
+   ejemplo con la forma exacta del endpoint real. Se etiquetan como
+   ejemplo: no se hacen pasar por una consulta en vivo. */
+var EJEMPLOS = {
+  'coldplay':     { name:'Coldplay',     genres:['permanent wave','pop'],    followers:48250119,  popularity:89 },
+  'bad bunny':    { name:'Bad Bunny',    genres:['reggaeton','trap latino'], followers:84120553,  popularity:96 },
+  'taylor swift': { name:'Taylor Swift', genres:['pop'],                     followers:132400000, popularity:100 },
+  'karol g':      { name:'KAROL G',      genres:['reggaeton colombiano'],    followers:65300000,  popularity:94 }
+};
+
+$('#buscar').onclick = function(){
+  var q = $('#q').value.trim().toLowerCase();
+  var res = $('#res');
+  if (!q) return;
+
+  var d = EJEMPLOS[q];
+  if (!d) {
+    anotar('GET', '/spotify/artist/' + q, 503, 'requiere el backend en marcha');
+    res.className = 'result on';
+    res.innerHTML = '<p class="res-sub">Este endpoint consulta la Spotify Web API y necesita el ' +
+      'servidor Flask encendido: el <code>client_secret</code> no puede viajar al navegador.' +
+      '<br><br>Prueba con <b>coldplay</b>, <b>bad bunny</b>, <b>karol g</b> o <b>taylor swift</b> ' +
+      'para ver la forma exacta de la respuesta.</p>';
+    return;
+  }
+
+  anotar('GET', '/spotify/artist/' + q, 200, 'respuesta de ejemplo');
+  res.className = 'result on';
+  res.innerHTML =
+    '<div class="res-top">' +
+      '<div>' +
+        '<div class="res-name">' + esc(d.name) + '</div>' +
+        '<div class="res-sub">Respuesta de ejemplo con la forma real del endpoint</div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="stats">' +
+      '<div class="stat"><b>' + d.followers.toLocaleString('es-CO') + '</b><span>Seguidores</span></div>' +
+      '<div class="stat"><b>' + d.popularity + '/100</b><span>Popularidad</span></div>' +
+    '</div>' +
+    '<div class="genres">' + d.genres.map(function(g){ return '<span class="chip">' + esc(g) + '</span>'; }).join('') + '</div>';
+};
+
+$('#q').addEventListener('keydown', function(e){ if (e.key === 'Enter') $('#buscar').click(); });
+$('#n-mail').addEventListener('keydown', function(e){ if (e.key === 'Enter') $('#crear').click(); });
+
+anotar('GET', '/users', 200, 'estado inicial cargado');
+pintar();
+</script>
 </body>
 </html>
