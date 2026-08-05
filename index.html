@@ -136,6 +136,10 @@ button:disabled{opacity:.35;cursor:not-allowed}
 .tema.base .tema-t::after{content:'';display:inline-block;width:5px;height:5px;border-radius:50%;
   background:var(--warm);margin-left:8px;vertical-align:middle}
 
+.estado-envio{display:none;margin-top:12px;font-size:13.5px;color:var(--ink-soft)}
+.estado-envio.on{display:block}
+.estado-envio.ok{color:#8FCB7A}
+.estado-envio.error{color:#E8897C}
 .leyenda{margin-top:18px;padding-top:16px;border-top:1px solid var(--line);
   font-size:12.5px;color:var(--ink-muted)}
 .leyenda i{display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--warm);
@@ -284,6 +288,25 @@ var CATALOGO = [
 // Lo que se escriba en el buscador filtra TODO el catalogo; sin texto se
 // muestran solo los destacados.
 var filtro = '';
+
+/* -------------------------------------------------------------
+   ENVIO DE CORREO (EmailJS)
+
+   Una pagina estatica no puede enviar correo: hace falta un servicio que
+   hable con el proveedor. EmailJS esta hecho para eso y sus tres
+   identificadores son publicos por diseno (no son contrasenas): la
+   proteccion real son los dominios permitidos que se configuran en su
+   panel.
+
+   Rellena los tres y el boton enviara de verdad. Vacios, el boton abre
+   el cliente de correo con todo escrito, que es como funciona ahora.
+   ------------------------------------------------------------- */
+var EMAILJS = {
+  publicKey:  '',   // Account -> General -> Public Key
+  serviceId:  '',   // Email Services -> Service ID
+  templateId: ''    // Email Templates -> Template ID
+};
+var EMAILJS_LISTO = !!(EMAILJS.publicKey && EMAILJS.serviceId && EMAILJS.templateId);
 
 var CLAVE = 'artist_finder_v2';
 function $(s){ return document.querySelector(s); }
@@ -484,11 +507,14 @@ function mostrarPlaylist(pl, nombre){
     }).join('') +
     '<p class="leyenda">Las marcadas con <i></i> son de los artistas que elegiste. ' +
     'El resto son de artistas que comparten género con ellos.</p>' +
-    '<div class="acciones"><a class="b-main enlace-btn" id="enviar" href="' +
-      esc(enlaceCorreo(pl, nombre)) + '">Enviármela por correo</a></div>';
+    '<div class="acciones">' + (EMAILJS_LISTO
+      ? '<button class="b-main" id="enviar">Enviármela por correo</button>'
+      : '<a class="b-main enlace-btn" id="enviar" href="' + esc(enlaceCorreo(pl, nombre)) + '">Enviármela por correo</a>'
+    ) + '</div><p class="estado-envio" id="estado-envio"></p>';
 
   $('#enviar').addEventListener('click', function(){
-    anotar('POST','/users/' + estado.activa + '/playlist/email', 200, 'abriendo cliente de correo');
+    if (EMAILJS_LISTO) { enviarDeVerdad(pl, nombre); }
+    else { anotar('POST','/users/' + estado.activa + '/playlist/email', 200, 'abriendo cliente de correo'); }
   });
   $('#p3').classList.remove('off');
   $('#p3').classList.add('hecho');
@@ -516,6 +542,63 @@ function enlaceCorreo(pl, nombre){
   return 'mailto:' + destino +
     '?subject=' + encodeURIComponent('Tu playlist de Artist Finder') +
     '&body=' + encodeURIComponent(cuerpo);
+}
+
+/* Envio real. Carga el SDK solo cuando hace falta, para no penalizar la
+   carga de la pagina a quien nunca pulse el boton. */
+function cargarSDK(){
+  if (window.emailjs) return Promise.resolve();
+  return new Promise(function(res, rej){
+    var sc = document.createElement('script');
+    sc.src = 'https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js';
+    sc.onload = function(){ window.emailjs.init({ publicKey: EMAILJS.publicKey }); res(); };
+    sc.onerror = function(){ rej(new Error('No se pudo cargar EmailJS')); };
+    document.head.appendChild(sc);
+  });
+}
+
+function enviarDeVerdad(pl, nombre){
+  var p = persona();
+  var destino = p && p.email;
+  var caja = $('#estado-envio');
+  var btn = $('#enviar');
+
+  if (!destino || destino.indexOf('@') === -1) {
+    caja.className = 'estado-envio error on';
+    caja.textContent = 'Esta persona no tiene un correo válido. Edítala y vuelve a intentar.';
+    anotar('POST','/users/' + estado.activa + '/playlist/email', 400, '{"error":"email invalido"}');
+    return;
+  }
+
+  btn.disabled = true;
+  caja.className = 'estado-envio on';
+  caja.textContent = 'Enviando…';
+
+  var lineas = pl.map(function(t,i){
+    return (i+1) + '. ' + t.titulo + ' - ' + t.artista + '  (' + t.dur + ')';
+  }).join('\n');
+
+  cargarSDK().then(function(){
+    return window.emailjs.send(EMAILJS.serviceId, EMAILJS.templateId, {
+      to_email: destino,
+      to_name: nombre,
+      artistas: estado.elegidos.join(', '),
+      playlist: lineas,
+      message: 'enjoy your playlist!\n\nsaluditoss,\nAB'
+    });
+  }).then(function(){
+    caja.className = 'estado-envio ok on';
+    caja.textContent = 'Listo, la playlist va en camino a ' + destino;
+    anotar('POST','/users/' + estado.activa + '/playlist/email', 200, '{"sent":true}');
+    btn.disabled = false;
+  }).catch(function(err){
+    caja.className = 'estado-envio error on';
+    caja.textContent = 'No se pudo enviar. Ábrelo en tu correo con el enlace de abajo.';
+    // Respaldo: si el envio falla, al menos que pueda mandarlo a mano.
+    caja.innerHTML += ' <a href="' + esc(enlaceCorreo(pl, nombre)) + '">Abrir en mi correo</a>';
+    anotar('POST','/users/' + estado.activa + '/playlist/email', 502, String(err.message || err));
+    btn.disabled = false;
+  });
 }
 
 function ocultarPlaylist(){
