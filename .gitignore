@@ -2,9 +2,25 @@
 .env
 .env.*
 !.env.example
+*.pem
+*.key
+credentials.json
 
+# Datos de usuarios generados en local
+users.json
+
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
 venv/
 .venv/
+env/
+*.egg-info/
+.pytest_cache/
+
+# Sistema y editores
 .DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp

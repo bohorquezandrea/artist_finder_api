@@ -15,8 +15,10 @@ load_dotenv()
 SPOTIFY_CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID")
 SPOTIFY_CLIENT_SECRET = os.getenv("SPOTIFY_CLIENT_SECRET")
 
-print("SPOTIFY_CLIENT_SECRET:", SPOTIFY_CLIENT_SECRET)
-print("SPOTIFY_CLIENT_ID:", SPOTIFY_CLIENT_ID)
+# Nunca imprimir credenciales: en un despliegue real acaban en los logs
+# de la plataforma, que se conservan y a veces son accesibles a terceros.
+if not SPOTIFY_CLIENT_ID or not SPOTIFY_CLIENT_SECRET:
+    print("AVISO: faltan las credenciales de Spotify. Copia .env.example a .env.")
 
 USERS_FILE = 'users.json'
 
@@ -133,7 +135,9 @@ def get_spotify_token():
     if response.status_code == 200:
         return response.json().get("access_token")
     else:
-        print("Error al obtener el token de Spotify:", response.json())
+        # Solo el codigo de estado: el cuerpo de error puede incluir
+        # detalles de la peticion que es mejor no volcar al log.
+        print("Error al obtener el token de Spotify. Estado:", response.status_code)
         return None
     
 
@@ -196,5 +200,8 @@ def get_song(song_name):
         return jsonify({"error": "Error al consultar la API de Spotify"}), response.status_code
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    # debug se activa solo si se pide explicitamente. Con debug=True fijo,
+    # el depurador de Werkzeug queda expuesto y permite ejecutar codigo
+    # arbitrario desde el navegador si la app llega a estar accesible.
+    app.run(debug=os.getenv("FLASK_DEBUG") == "1")
 
